@@ -14,7 +14,7 @@ class OffloadingEnv(gym.Env):
 
     vehicle_config = {"vehicle_num": 10, "run_time": 20000, "car_speed": 0.8, "time_slot": 0.2, "path_num": 10,
                       "forward_probability": 0.7}
-    uav_config = {"uav1": [-25, 10, -25], "uav2": [-25, 10, 25], "uav3": [25, 10, -25], "uav4": [25, 10, 25]}
+    uav_pos = {"uav1": [-25, 10, -25], "uav2": [-25, 10, 25], "uav3": [25, 10, -25], "uav4": [25, 10, 25]}
 
     def __init__(self, trajectory_list):
         super(OffloadingEnv, self).__init__()
@@ -38,12 +38,13 @@ class OffloadingEnv(gym.Env):
         self.time_line = 0.0
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
-        # 添加无人机
+        # 定义无人机
         for i in self.uav_config.keys():
-            self.nodes.append(Node(i,"uav"))
-        # 添加车
+            self.nodes.append(Node(i, "uav"))
+        # 定义车
         for i in range(self.vehicle_config["vehicle_num"]):
             self.nodes.append(Node())
+
     def step(self, action):
         # 执行一个时间步骤
         # ... 计算下一状态和奖励 ...
@@ -176,17 +177,7 @@ class OffloadingEnv(gym.Env):
 
         # 使用给定的公式计算路径损耗
         L_uu = 20 * np.log10(d_uu) + 20 * np.log10(self.metadata["fc"]) + 20 * np.log10(4 * np.pi / v_c)
-
         return L_uu
-
-    def energy_consumption_of_node_computation(self, data_size, node):
-        """
-        节点计算能耗
-        :param data_size:计算的数据量
-        :param E_n:E_n<E_max为在节点n上的一个CPU周期的能耗
-        :return:计算能耗
-        """
-        return data_size * node.E_n
 
     def energy_consumption_of_node_transimission(self, node1, node2, data_size):
         """
@@ -197,18 +188,6 @@ class OffloadingEnv(gym.Env):
         P_n = node1.P_n
         transimission_rate = self.get_transimisssion_rate(node1, node2)
         return (data_size * P_n) / transimission_rate
-
-    def offloading_time(self, node1, node2, data_size):
-        """
-        卸载时间包含了两个部分，一部分为计算时延，另外一部分为传输时延，但是卸载时延为二者的最大值
-        :param node1:
-        :param node2:
-        :return:卸载时延
-        """
-        C_n = 0
-        conputation_delay = data_size / C_n
-        offloading_delay = data_size / self.get_transimisssion_rate(node1, node2)
-        return max(offloading_delay, conputation_delay)
 
     def get_transimission_rate(self, node1, node2):
         # dis=self.get_dis(node1.position,node2.position)

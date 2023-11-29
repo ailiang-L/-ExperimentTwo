@@ -2,24 +2,48 @@ import gym
 from gym import spaces
 import numpy as np
 from Node import Node
+from PathCreator import PathCreator
+
+
 class OffloadingEnv(gym.Env):
     """
     自定义卸载任务的环境。
     """
     metadata = {"eta1": 12.8, "eta2": 0.11, "eta_LoS": 1.6, "eta_NLoS": 23, "fc": 2000, "eta3": 1.68, "eta4": 1.7,
-                "d0": 10, "Lcvv": 1.5, "L0vv": 62.0,"p_noise": 1e-15}
+                "d0": 10, "Lcvv": 1.5, "L0vv": 62.0, "p_noise": 1e-15}
+
+    vehicle_config = {"vehicle_num": 10, "run_time": 20000, "car_speed": 0.8, "time_slot": 0.2, "path_num": 10,
+                      "forward_probability": 0.7}
+    uav_config = {"uav1": [-25, 10, -25], "uav2": [-25, 10, 25], "uav3": [25, 10, -25], "uav4": [25, 10, 25]}
+
     def __init__(self, trajectory_list):
         super(OffloadingEnv, self).__init__()
 
         # 定义状态空间和动作空间
         self.observation_space = spaces.Box(low=np.array([0, -np.inf, 0, 0, 0, 0, 0, 0]),
-                                            high=np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),
+                                            high=np.array(
+                                                [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),
                                             dtype=np.float32)
         self.action_space = spaces.Discrete(10)  # 动作空间大小为10
 
         self.trajectory_list = trajectory_list  # 车辆轨迹数据
         self.current_step = 0
 
+        # 定义车辆的路径
+        self.vehicle_paths = PathCreator(self.vehicle_config["car_speed"], self.vehicle_config["run_time"],
+                                         self.vehicle_config["time_slot"], self.vehicle_config["path_num"],
+                                         self.vehicle_config["forward_probability"])
+
+        # 时间线
+        self.time_line = 0.0
+        # 节点定义：4个无人机，20个车辆
+        self.nodes = []
+        # 添加无人机
+        for i in self.uav_config.keys():
+            self.nodes.append(Node(i,"uav"))
+        # 添加车
+        for i in range(self.vehicle_config["vehicle_num"]):
+            self.nodes.append(Node())
     def step(self, action):
         # 执行一个时间步骤
         # ... 计算下一状态和奖励 ...
@@ -112,7 +136,7 @@ class OffloadingEnv(gym.Env):
         """
 
         # 计算两车之间的距离
-        d_vv = self.get_dis(vehicle1_position,vehicle2_position)
+        d_vv = self.get_dis(vehicle1_position, vehicle2_position)
 
         # 计算正态随机分布变量
         X_eta4 = np.random.normal(0, self.metadata["eta4"])
@@ -155,55 +179,51 @@ class OffloadingEnv(gym.Env):
 
         return L_uu
 
-    def energy_consumption_of_node_computation(self,data_size,node):
-        '''
+    def energy_consumption_of_node_computation(self, data_size, node):
+        """
         节点计算能耗
         :param data_size:计算的数据量
         :param E_n:E_n<E_max为在节点n上的一个CPU周期的能耗
         :return:计算能耗
-        '''
-        return  data_size*node.E_n
+        """
+        return data_size * node.E_n
 
-    def energy_consumption_of_node_transimission(self, node1,node2,data_size):
-        '''
+    def energy_consumption_of_node_transimission(self, node1, node2, data_size):
+        """
         计算传输数据造成的能耗
         :param P_n: 节点的发送功率
         :return:传输能耗
-        '''
-        P_n=node1.P_n
-        transimission_rate=self.get_transimisssion_rate(node1,node2)
-        return (data_size*P_n)/transimission_rate
+        """
+        P_n = node1.P_n
+        transimission_rate = self.get_transimisssion_rate(node1, node2)
+        return (data_size * P_n) / transimission_rate
 
-
-    def offloading_time(self,node1,node2,data_size):
-        '''
+    def offloading_time(self, node1, node2, data_size):
+        """
         卸载时间包含了两个部分，一部分为计算时延，另外一部分为传输时延，但是卸载时延为二者的最大值
         :param node1:
         :param node2:
         :return:卸载时延
-        '''
-        C_n=0
-        conputation_delay=data_size/C_n
-        offloading_delay=data_size/self.get_transimisssion_rate(node1,node2)
-        return  max(offloading_delay,conputation_delay)
+        """
+        C_n = 0
+        conputation_delay = data_size / C_n
+        offloading_delay = data_size / self.get_transimisssion_rate(node1, node2)
+        return max(offloading_delay, conputation_delay)
 
-
-
-    def get_transimisssion_rate(self, node1,node2):
-        #dis=self.get_dis(node1.position,node2.position)
-        loss=0
-        bandwidth=node1.bandwidth # 带宽: 1 MHz
-        P_n=node1.P_n
-        if(node1.type=="UAV" and node2.type=="UAV"):
-            loss=self.path_loss_U2U(node1.position,node2.position)
-        elif((node1.type=="UAV" and node2.type=="vehicle")or(node1.type=="vehicle" and node2.type=="UAV")):
-            loss=self.path_loss_U2V(node1.position,node2.position)
+    def get_transimission_rate(self, node1, node2):
+        # dis=self.get_dis(node1.position,node2.position)
+        loss = 0
+        bandwidth = node1.bandwidth  # 带宽: 1 MHz
+        P_n = node1.P_n
+        if (node1.type == "UAV" and node2.type == "UAV"):
+            loss = self.path_loss_U2U(node1.position, node2.position)
+        elif ((node1.type == "UAV" and node2.type == "vehicle") or (node1.type == "vehicle" and node2.type == "UAV")):
+            loss = self.path_loss_U2V(node1.position, node2.position)
         else:
-            loss=self.path_loss_V2V(node1.position,node2.position)
-        return  bandwidth* np.log2(1 + (P_n / self.metadata["P_noise"]) * loss)
+            loss = self.path_loss_V2V(node1.position, node2.position)
+        return bandwidth * np.log2(1 + (P_n / self.metadata["P_noise"]) * loss)
 
-
-    def get_dis(self,position1,position2):
+    def get_dis(self, position1, position2):
         '''
         :param position1:位置1
         :param position2:位置2
@@ -214,6 +234,6 @@ class OffloadingEnv(gym.Env):
         if not isinstance(position2, np.ndarray):
             position2 = np.array(position2)
 
-        return  np.sqrt((position1[0] - position2[0]) ** 2 +
+        return np.sqrt((position1[0] - position2[0]) ** 2 +
                        (position1[1] - position2[1]) ** 2 +
                        (position1[2] - position2[2]) ** 2)

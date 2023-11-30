@@ -3,22 +3,18 @@ from gym import spaces
 import numpy as np
 from Node import Node
 from PathCreator import PathCreator
+import yaml
 
 
 class OffloadingEnv(gym.Env):
     """
     自定义卸载任务的环境。
     """
-    metadata = {"eta1": 12.8, "eta2": 0.11, "eta_LoS": 1.6, "eta_NLoS": 23, "fc": 2000, "eta3": 1.68, "eta4": 1.7,
-                "d0": 10, "Lcvv": 1.5, "L0vv": 62.0, "p_noise": 1e-15}
-
-    vehicle_config = {"vehicle_num": 10, "run_time": 20000, "car_speed": 0.8, "time_slot": 0.2, "path_num": 10,
-                      "forward_probability": 0.7}
-    uav_pos = {"uav1": [-25, 10, -25], "uav2": [-25, 10, 25], "uav3": [25, 10, -25], "uav4": [25, 10, 25]}
-
     def __init__(self, trajectory_list):
         super(OffloadingEnv, self).__init__()
-
+        # 加载配置文件
+        with open('../config/parameters.yaml', 'r') as f:
+            self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
         # 定义状态空间和动作空间
         self.observation_space = spaces.Box(low=np.array([0, -np.inf, 0, 0, 0, 0, 0, 0]),
                                             high=np.array(
@@ -94,8 +90,8 @@ class OffloadingEnv(gym.Env):
         elevation_angle = np.arcsin(y_u / d_vu)
 
         # 使用给定的公式计算LoS概率
-        probability = 1 / (1 + self.metadata["eta1"] * np.exp(
-            -self.metadata["eta2"] * (elevation_angle - self.metadata["eta1"])))
+        probability = 1 / (1 + self.config['communication_config']["eta1"] * np.exp(
+            -self.config['communication_config']["eta2"] * (elevation_angle - self.config['communication_config']["eta1"])))
 
         return probability
 
@@ -115,11 +111,11 @@ class OffloadingEnv(gym.Env):
         d_vu = np.sqrt((x_u - x_v) ** 2 + (y_u - y_v) ** 2 + (z_u - z_v) ** 2)
 
         # 计算自由空间路径损耗L^FS
-        L_FS = 20 * np.log10(d_vu) + 20 * np.log10(self.metadata["fc"]) + 20 * np.log10(4 * np.pi / v_c)
+        L_FS = 20 * np.log10(d_vu) + 20 * np.log10(self.config['communication_config']["fc"]) + 20 * np.log10(4 * np.pi / v_c)
 
         # 计算LoS和NLoS情况下的路径损耗
-        L_LoS = L_FS + self.metadata["eta_LoS"]
-        L_NLoS = L_FS + self.metadata["eta_NLoS"]
+        L_LoS = L_FS + self.config['communication_config']["eta_LoS"]
+        L_NLoS = L_FS + self.config['communication_config']["eta_NLoS"]
 
         # 计算总路径损耗
         L_total = h_LoS * L_LoS + h_NLoS * L_NLoS
@@ -140,7 +136,7 @@ class OffloadingEnv(gym.Env):
         d_vv = self.get_dis(vehicle1_position, vehicle2_position)
 
         # 计算正态随机分布变量
-        X_eta4 = np.random.normal(0, self.metadata["eta4"])
+        X_eta4 = np.random.normal(0, self.config['communication_config']["eta4"])
 
         # 根据zeta_mode来决定zeta的值
         if zeta_mode == 'reverse':
@@ -153,8 +149,8 @@ class OffloadingEnv(gym.Env):
             raise ValueError("Invalid zeta_mode. Choose from 'reverse', 'forward', or 'convoy'.")
 
         # 使用给定的公式计算路径损耗
-        L_vv = self.metadata["L0vv"] + 10 * self.metadata["eta3"] * np.log10(
-            d_vv / self.metadata["d0"]) + X_eta4 + zeta * self.metadata["Lcvv"]
+        L_vv = self.config['communication_config']["L0vv"] + 10 * self.config['communication_config']["eta3"] * np.log10(
+            d_vv / self.config['communication_config']["d0"]) + X_eta4 + zeta * self.config['communication_config']["Lcvv"]
 
         return L_vv
 
@@ -176,7 +172,7 @@ class OffloadingEnv(gym.Env):
                        (drone1_position[2] - drone2_position[2]) ** 2)
 
         # 使用给定的公式计算路径损耗
-        L_uu = 20 * np.log10(d_uu) + 20 * np.log10(self.metadata["fc"]) + 20 * np.log10(4 * np.pi / v_c)
+        L_uu = 20 * np.log10(d_uu) + 20 * np.log10(self.config['communication_config']["fc"]) + 20 * np.log10(4 * np.pi / v_c)
         return L_uu
 
     def energy_consumption_of_node_transimission(self, node1, node2, data_size):
@@ -200,7 +196,7 @@ class OffloadingEnv(gym.Env):
             loss = self.path_loss_U2V(node1.position, node2.position)
         else:
             loss = self.path_loss_V2V(node1.position, node2.position)
-        return bandwidth * np.log2(1 + (P_n / self.metadata["P_noise"]) * loss)
+        return bandwidth * np.log2(1 + (P_n / self.config['communication_config']["P_noise"]) * loss)
 
     def get_dis(self, position1, position2):
         '''

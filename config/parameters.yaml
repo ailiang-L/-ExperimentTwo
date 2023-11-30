@@ -1,0 +1,40 @@
+communication_config:
+  eta1: 12.8
+  eta2: 0.11
+  eta_LoS: 1.6
+  eta_NLoS: 23
+  fc: 2000
+  eta3: 1.68
+  eta4: 1.7
+  d0: 10
+  Lcvv: 1.5
+  L0vv: 62.0
+  p_noise: 1e-15
+
+vehicle_path_config:
+  vehicle_num: 10
+  run_time: 20000
+  car_speed: 0.8
+  time_slot: 0.2
+  path_num: 10
+  forward_probability: 0.3
+
+uav_config:
+  pos:
+    - [-25, 10, -25]
+    - [-25, 10, 25]
+    - [25, 10, -25]
+    - [25, 10, 25]
+
+  bandwidth: 1        # MHz
+  E_n: 7e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut
+  P_n: 1              # w--the transmit power of node ut
+  type: "uav"
+  w: 16               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)
+
+vehicle_config:
+  bandwidth: 2       # MHz,<A Multihop Task Offloading Decision Model in MEC-Enabled Internet of Vehicles> is 10 MHZ
+  E_n: 14e-8         # J/cycle--the CPU energy consumption to implement one cycle at node ut
+  P_n: 1.58          # w--the transmit power of node ut,<A Multihop Task Offloading Decision Model in MEC-Enabled Internet of Vehicles> is 32 dBm is approximately equal to 1.58 w
+  type: "vehicle"
+  w: 8               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)

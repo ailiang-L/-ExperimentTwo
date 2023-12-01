@@ -3,13 +3,13 @@ communication_config:
   eta2: 0.11
   eta_LoS: 1.6
   eta_NLoS: 23
-  fc: 2000
-  eta3: 1.68
-  eta4: 1.7
-  d0: 10
-  Lcvv: 1.5
-  L0vv: 62.0
-  p_noise: 1e-15
+  fc: 2e9 #  2GHz or 2e9 hz carrier frequency
+  eta3: 1.68 #n --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  eta4: 1.7 #<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  d0: 10 # d0 --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  Lcvv: 1.5 # PLc --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  L0vv: 62.0 # PL0 --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  p_noise: 1e-12 #noise_power=noise_power_spectral_density*bandwidth, U2I is 1e-11 U2U is 1e-15
 
 vehicle_path_config:
   vehicle_num: 10
@@ -26,15 +26,17 @@ uav_config:
     - [25, 10, -25]
     - [25, 10, 25]
 
-  bandwidth: 1        # MHz
+  bandwidth: 1e6        # Hz or 1MHz
   E_n: 7e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut
   P_n: 1              # w--the transmit power of node ut
   type: "uav"
   w: 16               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)
+  C_n: 2e7            # cycle/s --the available computation resource, i.e., in cycle/s, of node
 
 vehicle_config:
-  bandwidth: 2       # MHz,<A Multihop Task Offloading Decision Model in MEC-Enabled Internet of Vehicles> is 10 MHZ
+  bandwidth: 2e6      # Hz or 2 MHz,<A Multihop Task Offloading Decision Model in MEC-Enabled Internet of Vehicles> is 10 MHZ
   E_n: 14e-8         # J/cycle--the CPU energy consumption to implement one cycle at node ut
   P_n: 1.58          # w--the transmit power of node ut,<A Multihop Task Offloading Decision Model in MEC-Enabled Internet of Vehicles> is 32 dBm is approximately equal to 1.58 w
   type: "vehicle"
   w: 8               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)
+  C_n: 2e7           # cycle/s --the available computation resource, i.e., in cycle/s, of node

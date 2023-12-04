@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class Node:
     def __init__(self, id, pos, E_n, P_n, bandwidth, type, w, C_n, config):
         self.id = id
@@ -112,6 +115,9 @@ class Node:
         transmission_rate = self.get_transmission_rate(target_node)
         return (data_size * self.P_n) / transmission_rate
 
+    def energy_consumption_of_node_computation(self, data_size):
+        return data_size * self.w * self.E_n
+
     def get_transmission_rate(self, target_node):
         """
         get the transmission rate
@@ -125,7 +131,8 @@ class Node:
             loss = self.path_loss_U2V(self.position, target_node.position)
         else:
             loss = self.path_loss_V2V(self.position, target_node.position)
-        return self.bandwidth * np.log2(1 + (self.P_n / self.config['communication_config']["P_noise"]) * loss)????
+        return self.bandwidth * math.log2(
+            1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))
 
     def get_dis(self, position1, position2):
         """
@@ -133,11 +140,6 @@ class Node:
         :param position2:位置2
         :return: 两个坐标的欧式距离
         """
-        if not isinstance(position1, np.ndarray):
-            position1 = np.array(position1)
-        if not isinstance(position2, np.ndarray):
-            position2 = np.array(position2)
-
         return np.sqrt((position1[0] - position2[0]) ** 2 +
                        (position1[1] - position2[1]) ** 2 +
                        (position1[2] - position2[2]) ** 2)
@@ -154,7 +156,7 @@ class UAV(Node):
         return data_size * self.w * self.E_n
 
 
-class Vehicle:
+class Vehicle(Node):
     def __init__(self, config, id):
         super(Vehicle, self).__init__(id, [0, 0, 0], config['vehicle_config']['E_n'],
                                       config['vehicle_config']['P_n'], config['vehicle_config']['bandwidth'],

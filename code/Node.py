@@ -101,6 +101,16 @@ class Node:
             4 * np.pi / v_c)
         return L_uu
 
+    def get_path_loss(self, target_node):
+        if self.type == "uav" and target_node.type == "uav":
+            loss = self.path_loss_U2U(self.position, target_node.position)
+        elif (self.type == "uav" and target_node.type == "vehicle") or (
+                self.type == "vehicle" and target_node.type == "uav"):
+            loss = self.path_loss_U2V(self.position, target_node.position)
+        else:
+            loss = self.path_loss_V2V(self.position, target_node.position)
+        return loss
+
     def energy_consumption_of_node_transmission(self, data_size, target_node):
         """
         计算传输数据造成的能耗
@@ -118,13 +128,7 @@ class Node:
         :param target_node:
         :return: the transmission rate
         """
-        if self.type == "uav" and target_node.type == "uav":
-            loss = self.path_loss_U2U(self.position, target_node.position)
-        elif (self.type == "uav" and target_node.type == "vehicle") or (
-                self.type == "vehicle" and target_node.type == "uav"):
-            loss = self.path_loss_U2V(self.position, target_node.position)
-        else:
-            loss = self.path_loss_V2V(self.position, target_node.position)
+        loss = self.get_path_loss(target_node)
         return self.bandwidth * math.log2(
             1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))
 

@@ -87,3 +87,15 @@ class OffloadingEnv(gym.Env):
                 min_index = i
         assert self.nodes[i].id != current_node.id
         return self.nodes[min_index]
+
+    def construct_state(self, current_node, target_node, data_size):
+        s_t = current_node.w * data_size
+        loss = current_node.get_path_loss(target_node)
+        c_nt = current_node.C_n
+        p_nt = current_node.P_n
+        e_nt = current_node.E_n
+        c_nt_next = target_node.C_n
+        p_nt_next = target_node.P_n
+        e_nt_next = target_node.E_n
+        state = np.array([s_t, loss, c_nt, p_nt, e_nt, c_nt_next, p_nt_next, e_nt_next], dtype=np.float32)
+        return state

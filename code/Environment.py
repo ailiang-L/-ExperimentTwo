@@ -5,6 +5,7 @@ from Node import Node
 from PathCreator import PathCreator
 import yaml
 import sys
+from LoadParameters import *
 
 
 class OffloadingEnv(gym.Env):
@@ -15,8 +16,7 @@ class OffloadingEnv(gym.Env):
     def __init__(self, trajectory_list):
         super(OffloadingEnv, self).__init__()
         # 加载配置文件
-        with open('../config/parameters.yaml', 'r') as f:
-            self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
+        self.config = load_parameters()
         # 定义状态空间和动作空间
         self.observation_space = spaces.Box(low=np.array([0, -np.inf, 0, 0, 0, 0, 0, 0]),
                                             high=np.array(

@@ -44,3 +44,5 @@ def load_parameters():
 
     config['node_choose_config']['e_weight'] = np.float32(config['node_choose_config']['e_weight'])
     config['node_choose_config']['t_weight'] = np.float32(config['node_choose_config']['t_weight'])
+
+    return  config

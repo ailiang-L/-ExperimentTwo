@@ -13,15 +13,9 @@ class Node:
         self.C_n = C_n  # cycle/s --the available computation resource, i.e., in cycle/s, of node
         self.config = config
 
-    def offloading_time(self, data_size, target_node):
-        """
-        卸载时间包含了两个部分，一部分为计算时延，另外一部分为传输时延，但是卸载时延为二者的最大值
-        :param target_node:
-        :param data_size:
-        :return:卸载时延
-        """
-        computation_delay = (data_size * self.w) / self.C_n
-        offloading_delay = data_size / self.get_transimisssion_rate(target_node.position)
+    def offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
+        computation_delay = (data_size_on_local * self.w) / self.C_n
+        offloading_delay = data_size_on_remote / self.get_transimisssion_rate(target_node.position)
         return max(offloading_delay, computation_delay)
 
     def los_probability_U2V(self, target_position):
@@ -152,9 +146,6 @@ class UAV(Node):
                                   config['uav_config']['type'], config['uav_config']['w'],
                                   config['uav_config']['C_n'], config)
 
-    def get_energy_cost(self, data_size):
-        return data_size * self.w * self.E_n
-
 
 class Vehicle(Node):
     def __init__(self, config, id):
@@ -162,6 +153,3 @@ class Vehicle(Node):
                                       config['vehicle_config']['P_n'], config['vehicle_config']['bandwidth'],
                                       config['vehicle_config']['type'], config['vehicle_config']['w'],
                                       config['vehicle_config']['C_n'], config)
-
-    def get_energy_cost(self, data_size):
-        return data_size * self.w * self.E_n

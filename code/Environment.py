@@ -1,18 +1,15 @@
 import random
-
-import gym
-from gym import spaces
-import numpy as np
-from Node import Node
+from stable_baselines3.common.env_checker import check_env
+import gymnasium
+from gymnasium import spaces
 from PathCreator import PathCreator
-import yaml
 import sys
 from Node import *
 from LoadParameters import *
 
 
-class OffloadingEnv(gym.Env):
-    def __init__(self, trajectory_list):
+class OffloadingEnv(gymnasium.Env):
+    def __init__(self):
         super(OffloadingEnv, self).__init__()
         # 加载配置文件
         self.config = load_parameters()
@@ -24,25 +21,25 @@ class OffloadingEnv(gym.Env):
                                                 [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),
                                             dtype=np.float32)
         self.action_space = spaces.Discrete(10)  # 动作空间大小为10
-
-        self.trajectory_list = trajectory_list  # 车辆轨迹数据
         self.current_step = 0
         self.current_node = None
         self.target_node = None
-
         # 定义车辆的路径
-        self.vehicle_paths = PathCreator(self.config['vehicle_config']["car_speed"],
-                                         self.config['vehicle_config']["run_time"],
-                                         self.config['vehicle_config']["time_slot"],
-                                         self.config['vehicle_config']["path_num"],
-                                         self.config['vehicle_config']["forward_probability"],
-                                         self.config['vehicle_config']['random_seed'])
+        self.path_creator = PathCreator(self.config['vehicle_path_config']['car_speed'],
+                                        self.config['vehicle_path_config']['run_time'],
+                                        self.config['vehicle_path_config']['time_slot'],
+                                        self.config['vehicle_path_config']['path_num'],
+                                        self.config['vehicle_path_config']['forward_probability'],
+                                        self.config['random_seed'])
+        self.path_creator.createPath()
+        self.vehicle_paths = self.path_creator.pathPoint
+
         # 时间线 随机一个时间点用于表示一个不确定的时间点进入任务计算状态
         self.time_line = random.randint(0, 1500)
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
         # 定义无人机
-        for i in len(self.config['uav_config']['pos']):
+        for i in range(len(self.config['uav_config']['pos'])):
             self.nodes.append(UAV(self.config, i))
         # 定义车
         for i in range(self.config['vehicle_path_config']["vehicle_num"]):
@@ -51,12 +48,22 @@ class OffloadingEnv(gym.Env):
         self.data_size = self.config['data_size']
 
     def step(self, action):
-        # 执行一个时间步骤 TODO 时间线的更新有问题，不应该是直接+1
-        self.time_line += 1
-        # 选择下一个节点
+
+        #
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = int(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
+
+        # 更新车辆的位置与时间线
+        time = self.current_node.offloading_time(data_size_on_local, data_size_on_remote, self.target_node)
+        time_step = int(time / self.config['vehicle_path_config']['time_slot'])
+        self.time_line += time_step
+        assert self.time_line < len(self.vehicle_paths[0])  # 保证不会超出轨迹点
+        for i in self.nodes:
+            if i.type == 'vehicle':
+                i.run_step(self.time_line)
+
+        time_step = 0
         # 计算奖励值
         reward = self.get_reward(self.current_node, self.target_node, data_size_on_local, data_size_on_remote)
         # 环境进入下一个状态
@@ -69,12 +76,15 @@ class OffloadingEnv(gym.Env):
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
         # 检查是否为结束状态
-        done = self.data_size == 0
+        done = (self.data_size == 0)
+        # 测试
+        done = False
         self.current_step += 1
+        truncated = False  # 是否因为最大步数限制被提前终止
+        info = {}  # 附加信息字典
+        return state, reward, done, truncated, info
 
-        return state, reward, done, {}
-
-    def reset(self):
+    def reset(self, seed=None):
         # 重置环境状态
         self.time_line = random.randint(0, 1500)
         self.data_size = self.config['data_size']
@@ -89,7 +99,8 @@ class OffloadingEnv(gym.Env):
         self.target_node = self.choose_target_node(self.current_node)
 
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
-        return initial_state
+        info = {}
+        return initial_state, info
 
     def render(self, mode='console'):
         pass
@@ -103,6 +114,7 @@ class OffloadingEnv(gym.Env):
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
+            assert current_node.id != self.nodes[i].id
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.offloading_time(1, 1, self.nodes[i])
@@ -127,7 +139,12 @@ class OffloadingEnv(gym.Env):
         return state
 
     def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
+        assert current_node.id != target_node.id
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
-        t = current_node.offloading_time(data_size_on_local, data_size_on_remote, current_node)
-        return e * self.config['reward_config']['e_weight'] + t * ['reward_config']['t_weight']
+        t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
+        return e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']
+
+
+myenv = OffloadingEnv()
+check_env(myenv)

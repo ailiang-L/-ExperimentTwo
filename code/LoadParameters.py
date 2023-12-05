@@ -47,4 +47,6 @@ def load_parameters():
     config['reward_config']['t_weight'] = np.float32(config['reward_config']['t_weight'])
 
     config['task_split_granularity'] = np.array(config['task_split_granularity'], dtype=np.float32)
+
+    config['data_size'] = np.float32(config['data_size'])
     return config

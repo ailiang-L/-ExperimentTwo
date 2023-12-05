@@ -267,11 +267,11 @@ class PathCreator:
                             # 将节点加入到路径当中
                             self.pathPoint[i].append(np.array([pos[curentNode][0], 0, pos[curentNode][1]]))
 
-pathcreator=PathCreator(0.8,2000,0.2,1,0.5)
-pathcreator.createPath()
-
-X =[x[0] for x in pathcreator.pathPoint[0]]
-Y=[x[2] for x in pathcreator.pathPoint[0]]
-plt.subplots_adjust(wspace=0.5,hspace=0.5)
-plt.scatter(X, Y)
-plt.show()
+# pathcreator=PathCreator(0.8,2000,0.2,1,0.5)
+# pathcreator.createPath()
+#
+# X =[x[0] for x in pathcreator.pathPoint[0]]
+# Y=[x[2] for x in pathcreator.pathPoint[0]]
+# plt.subplots_adjust(wspace=0.5,hspace=0.5)
+# plt.scatter(X, Y)
+# plt.show()

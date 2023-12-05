@@ -17,7 +17,7 @@ class Node:
 
     def offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
         computation_delay = (data_size_on_local * self.w) / self.C_n
-        offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node.position)
+        offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
         return max(offloading_delay, computation_delay)
 
     def los_probability_U2V(self, target_position):
@@ -85,10 +85,8 @@ class Node:
 
         # 使用给定的公式计算路径损耗
         L_vv = self.config['communication_config']["L0vv"] + 10 * self.config['communication_config'][
-            "eta3"] * np.log10(
-            d_vv / self.config['communication_config']["d0"]) + X_eta4 + zeta * self.config['communication_config'][
-                   "Lcvv"]
-
+            "eta3"] * np.log10(d_vv / self.config['communication_config']["d0"]) +\
+               X_eta4 + zeta * self.config['communication_config']["Lcvv"]
         return L_vv
 
     def path_loss_U2U(self, target_position):
@@ -103,6 +101,7 @@ class Node:
         return L_uu
 
     def get_path_loss(self, target_node):
+        #print('this id',self.id,'target id :',target_node.id)
         loss = 0
         if self.type == "uav" and target_node.type == "uav":
             loss = self.path_loss_U2U(target_node.position)
@@ -130,6 +129,7 @@ class Node:
         :param target_node:
         :return: the transmission rate
         """
+
         loss = self.get_path_loss(target_node)
         return self.bandwidth * math.log2(
             1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))
@@ -147,10 +147,10 @@ class Node:
 
 class UAV(Node):
     def __init__(self, config, id):
-        super(UAV, self).__init__(id, config['uav_config']['pos'][id], config['uav_config']['E_n'],
-                                  config['uav_config']['P_n'], config['uav_config']['bandwidth'],
-                                  config['uav_config']['type'], config['uav_config']['w'],
-                                  config['uav_config']['C_n'], config)
+        super(UAV, self).__init__(id=id, pos=config['uav_config']['pos'][id], E_n=config['uav_config']['E_n'],
+                                  P_n=config['uav_config']['P_n'], bandwidth=config['uav_config']['bandwidth'],
+                                  type=config['uav_config']['type'], w=config['uav_config']['w'],
+                                  C_n=config['uav_config']['C_n'], config=config)
 
     def node_is_in_range(self, node):
         if node.type == 'uav':
@@ -163,10 +163,11 @@ class UAV(Node):
 
 class Vehicle(Node):
     def __init__(self, config, id, path, time_line):
-        super(Vehicle, self).__init__(id, [0, 0, 0], config['vehicle_config']['E_n'],
-                                      config['vehicle_config']['P_n'], config['vehicle_config']['bandwidth'],
-                                      config['vehicle_config']['type'], config['vehicle_config']['w'],
-                                      config['vehicle_config']['C_n'], config)
+        super(Vehicle, self).__init__(id=id, pos=[0, 0, 0], E_n=config['vehicle_config']['E_n'],
+                                      P_n=config['vehicle_config']['P_n'],
+                                      bandwidth=config['vehicle_config']['bandwidth'],
+                                      type=config['vehicle_config']['type'], w=config['vehicle_config']['w'],
+                                      C_n=config['vehicle_config']['C_n'], config=config)
         self.path = path
         self.position = self.path[time_line]
 
@@ -180,4 +181,7 @@ class Vehicle(Node):
         return False
 
     def reset(self, time_line):
+        self.position = self.path[time_line]
+
+    def run_step(self, time_line):
         self.position = self.path[time_line]

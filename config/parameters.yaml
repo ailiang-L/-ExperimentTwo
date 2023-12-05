@@ -13,7 +13,7 @@ communication_config:
 
 vehicle_path_config:
   vehicle_num: 10
-  run_time: 20000
+  run_time: 2000
   car_speed: 0.8
   time_slot: 0.2
   path_num: 10
@@ -53,6 +53,5 @@ reward_config:
 
 data_size: 1e9 #bits
 
-task_split_granularity: [0,0.2,0.4,0.6,0.8,1]
+task_split_granularity: [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 random_seed: 1
-#车辆与无人机的通讯范围写在了node.py里面

@@ -150,10 +150,29 @@ class UAV(Node):
                                   config['uav_config']['type'], config['uav_config']['w'],
                                   config['uav_config']['C_n'], config)
 
+    def node_is_in_range(self, node):
+        if node.type == 'uav':
+            return True
+        if (node.position[0] <= self.position[0] + 25) and (node.position[0] >= self.position[0] - 25) \
+                and (node.position[2] <= self.position[2] + 25) and (node.position[2] >= self.position[2] - 25):
+            return True
+        return False
+
 
 class Vehicle(Node):
-    def __init__(self, config, id):
+    def __init__(self, config, id, path):
         super(Vehicle, self).__init__(id, [0, 0, 0], config['vehicle_config']['E_n'],
                                       config['vehicle_config']['P_n'], config['vehicle_config']['bandwidth'],
                                       config['vehicle_config']['type'], config['vehicle_config']['w'],
                                       config['vehicle_config']['C_n'], config)
+        self.path = path
+        self.position = self.path[0]
+
+    def node_is_in_range(self, node):
+        if node.type == 'uav' \
+                and node.position[0] + 25 >= self.position[0] >= node.position[0] - 25 \
+                and node.position[2] + 25 >= self.position[2] >= node.position[2] - 25:
+            return True
+        if self.get_dis(self.position, node.position) <= 50:
+            return True
+        return False

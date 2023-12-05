@@ -31,17 +31,16 @@ class OffloadingEnv(gym.Env):
         self.vehicle_paths = PathCreator(self.vehicle_config["car_speed"], self.vehicle_config["run_time"],
                                          self.vehicle_config["time_slot"], self.vehicle_config["path_num"],
                                          self.vehicle_config["forward_probability"])
-
         # 时间线
         self.time_line = 0.0
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
         # 定义无人机
-        for i in self.uav_config.keys():
-            self.nodes.append(Node(i, "uav"))
+        for i in len(self.config['uav_config']['pos']):
+            self.nodes.append(UAV(self.config, i))
         # 定义车
-        for i in range(self.vehicle_config["vehicle_num"]):
-            pass
+        for i in range(self.config['vehicle_path_config']["vehicle_num"]):
+            self.nodes.append(Vehicle(self.config, i, self.vehicle_paths[i]))
 
     def step(self, action):
         # 执行一个时间步骤
@@ -63,10 +62,7 @@ class OffloadingEnv(gym.Env):
         return initial_state
 
     def render(self, mode='console'):
-        if mode != 'console':
-            raise NotImplementedError()
-        # 打印出当前步骤的一些信息
-        print(f"Step: {self.current_step}")
+        pass
 
     def close(self):
         pass
@@ -75,7 +71,7 @@ class OffloadingEnv(gym.Env):
         min_value = sys.maxint
         min_index = -1
         for i in range(len(self.nodes)):
-            if current_node.id == self.nodes[i].id:
+            if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
@@ -85,7 +81,7 @@ class OffloadingEnv(gym.Env):
             if weight < min_value:
                 min_value = weight
                 min_index = i
-        assert self.nodes[i].id != current_node.id
+        assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
     def construct_state(self, current_node, target_node, data_size):
@@ -99,3 +95,9 @@ class OffloadingEnv(gym.Env):
         e_nt_next = target_node.E_n
         state = np.array([s_t, loss, c_nt, p_nt, e_nt, c_nt_next, p_nt_next, e_nt_next], dtype=np.float32)
         return state
+
+    def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
+        e = self.nodes[i].energy_consumption_of_node_computation(
+            data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
+        t = current_node.offloading_time(data_size_on_local, data_size_on_remote, current_node)
+        return e * self.config['reward_config']['e_weight'] + t * ['reward_config']['t_weight']

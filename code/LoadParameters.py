@@ -17,11 +17,9 @@ def load_parameters():
     config['communication_config']['L0vv'] = np.float32(config['communication_config']['L0vv'])
     config['communication_config']['p_noise'] = np.float32(config['communication_config']['p_noise'])
 
-    config['vehicle_path_config']['vehicle_num'] = np.float32(config['vehicle_path_config']['vehicle_num'])
     config['vehicle_path_config']['run_time'] = np.float32(config['vehicle_path_config']['run_time'])
     config['vehicle_path_config']['car_speed'] = np.float32(config['vehicle_path_config']['car_speed'])
     config['vehicle_path_config']['time_slot'] = np.float32(config['vehicle_path_config']['time_slot'])
-    config['vehicle_path_config']['path_num'] = np.float32(config['vehicle_path_config']['path_num'])
     config['vehicle_path_config']['forward_probability'] = np.np.float32(
         config['vehicle_path_config']['forward_probability'])
 
@@ -45,4 +43,7 @@ def load_parameters():
     config['node_choose_config']['e_weight'] = np.float32(config['node_choose_config']['e_weight'])
     config['node_choose_config']['t_weight'] = np.float32(config['node_choose_config']['t_weight'])
 
-    return  config
+    config['reward_config']['e_weight'] = np.float32(config['reward_config']['e_weight'])
+    config['reward_config']['t_weight'] = np.float32(config['reward_config']['t_weight'])
+
+    return config

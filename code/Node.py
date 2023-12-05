@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 
@@ -15,7 +17,7 @@ class Node:
 
     def offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
         computation_delay = (data_size_on_local * self.w) / self.C_n
-        offloading_delay = data_size_on_remote / self.get_transimisssion_rate(target_node.position)
+        offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node.position)
         return max(offloading_delay, computation_delay)
 
     def los_probability_U2V(self, target_position):
@@ -45,7 +47,7 @@ class Node:
         # 计算LoS和NLoS的概率
         uav_position = self.position if self.type == "uav" else target_position
         vehicle_position = self.position if self.type == "vehicle" else target_position
-        h_LoS = self.los_probability_U2V(uav_position, vehicle_position)
+        h_LoS = self.los_probability_U2V(target_position)
         h_NLoS = 1 - h_LoS
         d_vu = self.get_dis(uav_position, vehicle_position)
         # 计算自由空间路径损耗L^FS
@@ -95,20 +97,20 @@ class Node:
         :return: 路径损耗
         """
         v_c = 3 * 10 ** 8  # 光速
-        # 计算两个无人机之间的欧式距离
         d_uu = self.get_dis(self.position, target_position)
         L_uu = 20 * np.log10(d_uu) + 20 * np.log10(self.config['communication_config']["fc"]) + 20 * np.log10(
             4 * np.pi / v_c)
         return L_uu
 
     def get_path_loss(self, target_node):
+        loss = 0
         if self.type == "uav" and target_node.type == "uav":
-            loss = self.path_loss_U2U(self.position, target_node.position)
+            loss = self.path_loss_U2U(target_node.position)
         elif (self.type == "uav" and target_node.type == "vehicle") or (
                 self.type == "vehicle" and target_node.type == "uav"):
-            loss = self.path_loss_U2V(self.position, target_node.position)
+            loss = self.path_loss_U2V(target_node.position)
         else:
-            loss = self.path_loss_V2V(self.position, target_node.position)
+            loss = self.path_loss_V2V(target_node.position)
         return loss
 
     def energy_consumption_of_node_transmission(self, data_size, target_node):
@@ -160,13 +162,13 @@ class UAV(Node):
 
 
 class Vehicle(Node):
-    def __init__(self, config, id, path):
+    def __init__(self, config, id, path, time_line):
         super(Vehicle, self).__init__(id, [0, 0, 0], config['vehicle_config']['E_n'],
                                       config['vehicle_config']['P_n'], config['vehicle_config']['bandwidth'],
                                       config['vehicle_config']['type'], config['vehicle_config']['w'],
                                       config['vehicle_config']['C_n'], config)
         self.path = path
-        self.position = self.path[0]
+        self.position = self.path[time_line]
 
     def node_is_in_range(self, node):
         if node.type == 'uav' \
@@ -176,3 +178,6 @@ class Vehicle(Node):
         if self.get_dis(self.position, node.position) <= 50:
             return True
         return False
+
+    def reset(self, time_line):
+        self.position = self.path[time_line]

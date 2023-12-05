@@ -73,7 +73,7 @@ pos = [(-46.3, 16.4), (-32.3, 8.9), (-32.2, 31.6), (-32.2, 0.6), (-32.2, -2), (-
 
 
 class PathCreator:
-    def __init__(self, carSpeed, runTime, timeSlot, pathNum, forwardProbability):
+    def __init__(self, carSpeed, runTime, timeSlot, pathNum, forwardProbability,random_seed):
         self.carSpeed = carSpeed
         self.timeSlot = timeSlot
         self.pathNum = pathNum  # path的数量
@@ -83,6 +83,7 @@ class PathCreator:
         self.moveLength = self.timeSlot * self.carSpeed
         self.stepLength = self.moveLength
         self.forwardProbability = forwardProbability
+        random.seed(random_seed)
 
     def initializeStartPosition(self):
 
@@ -176,11 +177,11 @@ class PathCreator:
             for j in range(1, int(self.runTime / self.timeSlot)):
                 # 查询路径当前点可走的方向
                 # 如果只有一个方向
-                if (len(edges[curentNode]) == 1):
+                if len(edges[curentNode]) == 1:
                     direction = [pos[edges[curentNode][0][1]][0] - currentPoint[0],
                                  pos[edges[curentNode][0][1]][1] - currentPoint[1]]
                     # 如果从当前点到下一个点的距离小于了，每步走的距离，则需要继续选定方向，反之则直接行走
-                    if (self.norm(direction) > self.stepLength):
+                    if self.norm(direction) > self.stepLength:
                         '''距离大于了单步距离'''
                         nextPoint = [ii * self.stepLength for ii in self.normalized(direction)]
                         nextPoint = [nextPoint[0] + currentPoint[0], nextPoint[1] + currentPoint[1]]
@@ -205,8 +206,8 @@ class PathCreator:
 
                 else:
                     '''此时当前节点有两条出度，即有两个可以行驶的方向'''
-                    if (selectPoint):
-                        if (preNode != curentNode):
+                    if selectPoint:
+                        if preNode != curentNode:
                             # 首先计算行驶方向与两可选择方向的夹角
                             direction1 = [pos[edges[curentNode][0][1]][0] - currentPoint[0],
                                           pos[edges[curentNode][0][1]][1] - currentPoint[1]]
@@ -218,7 +219,7 @@ class PathCreator:
                             # 找到哪个才是直行的节点
                             forwardNode = edges[curentNode][0][1]
                             turnningNode = edges[curentNode][1][1]
-                            if (angle1 > angle2):
+                            if angle1 > angle2:
                                 forwardNode = edges[curentNode][1][1]
                                 turnningNode = edges[curentNode][0][1]
                             chooseNode = forwardNode
@@ -265,12 +266,12 @@ class PathCreator:
                             self.stepLength = self.moveLength
                             # 将节点加入到路径当中
                             self.pathPoint[i].append(np.array([pos[curentNode][0], 0, pos[curentNode][1]]))
-#
-# pathcreator=PathCreator(0.8,100,0.2,1,0.7)
-# pathcreator.createPath()
-#
-# X =[x[0] for x in pathcreator.pathPoint[0]]
-# Y=[x[2] for x in pathcreator.pathPoint[0]]
-# plt.subplots_adjust(wspace=0.5,hspace=0.5)
-# plt.scatter(X, Y)
-# plt.show()
+
+pathcreator=PathCreator(0.8,2000,0.2,1,0.5)
+pathcreator.createPath()
+
+X =[x[0] for x in pathcreator.pathPoint[0]]
+Y=[x[2] for x in pathcreator.pathPoint[0]]
+plt.subplots_adjust(wspace=0.5,hspace=0.5)
+plt.scatter(X, Y)
+plt.show()

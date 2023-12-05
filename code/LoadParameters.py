@@ -20,7 +20,7 @@ def load_parameters():
     config['vehicle_path_config']['run_time'] = np.float32(config['vehicle_path_config']['run_time'])
     config['vehicle_path_config']['car_speed'] = np.float32(config['vehicle_path_config']['car_speed'])
     config['vehicle_path_config']['time_slot'] = np.float32(config['vehicle_path_config']['time_slot'])
-    config['vehicle_path_config']['forward_probability'] = np.np.float32(
+    config['vehicle_path_config']['forward_probability'] = np.float32(
         config['vehicle_path_config']['forward_probability'])
 
     config['uav_config']['pos'][0] = np.array(config['uav_config']['pos'][0], dtype=np.float32)
@@ -46,4 +46,5 @@ def load_parameters():
     config['reward_config']['e_weight'] = np.float32(config['reward_config']['e_weight'])
     config['reward_config']['t_weight'] = np.float32(config['reward_config']['t_weight'])
 
+    config['task_split_granularity'] = np.array(config['task_split_granularity'], dtype=np.float32)
     return config

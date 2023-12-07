@@ -1,18 +1,16 @@
 import random
-from stable_baselines3.common.env_checker import check_env
 import gymnasium
 from gymnasium import spaces
 from PathCreator import PathCreator
 import sys
 from Node import *
-from LoadParameters import *
 
 
 class OffloadingEnv(gymnasium.Env):
-    def __init__(self):
+    def __init__(self, config):
         super(OffloadingEnv, self).__init__()
         # 加载配置文件
-        self.config = load_parameters()
+        self.config = config
         # 设置随机种子
         random.seed(self.config['random_seed'])
         # 定义状态空间和动作空间
@@ -48,8 +46,7 @@ class OffloadingEnv(gymnasium.Env):
         self.data_size = self.config['data_size']
 
     def step(self, action):
-
-        #
+        print("执行了step：", self.current_step + 1, "次")
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = int(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
@@ -64,27 +61,29 @@ class OffloadingEnv(gymnasium.Env):
                 i.run_step(self.time_line)
 
         time_step = 0
+
         # 计算奖励值
         reward = self.get_reward(self.current_node, self.target_node, data_size_on_local, data_size_on_remote)
+
         # 环境进入下一个状态
         self.current_node = self.target_node
         self.target_node = self.choose_target_node(self.current_node)
+
         # 节点切换以后对应数据大小也切换
         self.data_size = data_size_on_remote
         data_size_on_local = 0
         data_size_on_remote = 0
+
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
         # 检查是否为结束状态
-        done = (self.data_size == 0)
-        # 测试
-        done = False
+        done = bool(self.data_size == 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
-        info = {}  # 附加信息字典
+        info = {"reward": reward}  # 附加信息字典
         return state, reward, done, truncated, info
 
-    def reset(self, seed=None):
+    def reset(self, seed=1):
         # 重置环境状态
         self.time_line = random.randint(0, 1500)
         self.data_size = self.config['data_size']
@@ -144,7 +143,7 @@ class OffloadingEnv(gymnasium.Env):
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
         return e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']
-
-
-myenv = OffloadingEnv()
-check_env(myenv)
+#
+#
+# myenv = OffloadingEnv()
+# check_env(myenv)

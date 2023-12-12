@@ -1,6 +1,5 @@
 from stable_baselines3 import DQN
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.env_checker import check_env
 from Environment import OffloadingEnv
 import random
 import torch
@@ -18,16 +17,16 @@ torch.manual_seed(seed_value)
 
 # 创建环境
 env = OffloadingEnv(config)
-# check_env(env)
 # 创建向量化环境
 vec_env = make_vec_env(lambda: env, n_envs=1, seed=seed_value)
 
 # 创建DQN模型，并设置种子
-model = DQN("MlpPolicy", vec_env, verbose=1, seed=seed_value, tensorboard_log='../log/')
+model = DQN("MlpPolicy", vec_env, verbose=0, seed=seed_value, tensorboard_log='../log/')
 
 # 定义回调类
-call_back = CustomCallback(1)
+call_back = CustomCallback(0)
 # 设置log名
 training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
 # 训练模型
-model.learn(total_timesteps=100, callback=call_back, progress_bar=True, tb_log_name=training_time)
+model.learn(total_timesteps=100, callback=call_back, tb_log_name=training_time, log_interval=4)
+

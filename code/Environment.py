@@ -20,6 +20,7 @@ class OffloadingEnv(gymnasium.Env):
                                             dtype=np.float32)
         self.action_space = spaces.Discrete(10)  # 动作空间大小为10
         self.current_step = 0
+        self.episode = 0
         self.current_node = None
         self.target_node = None
         # 定义车辆的路径
@@ -46,7 +47,7 @@ class OffloadingEnv(gymnasium.Env):
         self.data_size = self.config['data_size']
 
     def step(self, action):
-        print("执行了step：", self.current_step + 1, "次")
+        # print("执行了step：", self.current_step + 1, "次")
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = int(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
@@ -81,24 +82,43 @@ class OffloadingEnv(gymnasium.Env):
         self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
         info = {"reward": reward}  # 附加信息字典
+
+        # 打印日志信息
+        em = '\n' if self.current_step % 10 == 0 else ''
+        print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->", end=em)
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) +"size:"+str(self.data_size)+ "-->", end=em)
+        if done:
+            print("finished")
         return state, reward, done, truncated, info
 
     def reset(self, seed=1):
         # 重置环境状态
         self.time_line = random.randint(0, 1500)
         self.data_size = self.config['data_size']
-        self.current_step = 0
+        self.current_step = 1
+        self.episode += 1
         # 重置车辆的位置
         for i in self.nodes:
             if i.type == 'vehicle':
                 i.reset(self.time_line)
-        # 随机选择节点以接收一个任务
-        node_index = random.randint(0, len(self.nodes))
+        # 随机选择一个无人机节点以接收一个任务
+        node_index = random.randint(0, len(self.config['uav_config']['pos']) - 1)
         self.current_node = self.nodes[node_index]
         self.target_node = self.choose_target_node(self.current_node)
 
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
+        # 打印日志信息
+        print()
+        print("\033[93m" + "-" * 50 + "\033[0m")
+        print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
+        print("\033[93m" + "-" * 50 + "\033[0m")
+        # print("\033[93m timeline:" + str(self.time_line) + "\033[0m")
+        print("offloading_route")
+        print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->",
+              end='')
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11)+"size:"+str(self.data_size) + " -->",
+        #       )
         return initial_state, info
 
     def render(self, mode='console'):
@@ -110,6 +130,7 @@ class OffloadingEnv(gymnasium.Env):
     def choose_target_node(self, current_node):
         min_value = sys.maxsize
         min_index = -1
+        print("\n choose:" + str(self.current_node.type + str(self.current_node.id)))
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
@@ -119,9 +140,13 @@ class OffloadingEnv(gymnasium.Env):
             t = current_node.offloading_time(1, 1, self.nodes[i])
             weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
                 't_weight'] * t
+            if self.nodes[i].type == 'vehicle':
+                print("time_line:", self.time_line, self.nodes[i].type, " ", self.nodes[i].id, " ",
+                      self.nodes[i].position, end='')
             if weight < min_value:
                 min_value = weight
                 min_index = i
+        print()
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 

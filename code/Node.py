@@ -85,7 +85,7 @@ class Node:
 
         # 使用给定的公式计算路径损耗
         L_vv = self.config['communication_config']["L0vv"] + 10 * self.config['communication_config'][
-            "eta3"] * np.log10(d_vv / self.config['communication_config']["d0"]) +\
+            "eta3"] * np.log10(d_vv / self.config['communication_config']["d0"]) + \
                X_eta4 + zeta * self.config['communication_config']["Lcvv"]
         return L_vv
 
@@ -101,7 +101,7 @@ class Node:
         return L_uu
 
     def get_path_loss(self, target_node):
-        #print('this id',self.id,'target id :',target_node.id)
+        # print('this id',self.id,'target id :',target_node.id)
         loss = 0
         if self.type == "uav" and target_node.type == "uav":
             loss = self.path_loss_U2U(target_node.position)
@@ -127,10 +127,14 @@ class Node:
         """
         get the transmission rate
         :param target_node:
-        :return: the transmission rate
+        :return: the transmission rate b/s
         """
 
         loss = self.get_path_loss(target_node)
+        # print("\033[93m" + "dis:" + str(self.get_dis(self.position, target_node.position)) + "\033[0m",end='---')
+        # print("\033[93m" + "loss:" + str(loss) + "\033[0m", end='---')
+        # print("\033[93m" + "rate:" + str(self.bandwidth * math.log2(
+        #     1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))) + "\033[0m")
         return self.bandwidth * math.log2(
             1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))
 

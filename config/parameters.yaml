@@ -8,7 +8,7 @@ communication_config:
   eta4: 1.7 #<Path Loss Modeling for Vehicle-to-Vehicle Communications>
   d0: 10 # d0 --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
   Lcvv: 1.5 # PLc --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
-  L0vv: 62.0 # PL0 --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
+  L0vv: 85.0 # PL0 --<Path Loss Modeling for Vehicle-to-Vehicle Communications>
   p_noise: 1e-12 #noise_power=noise_power_spectral_density*bandwidth, U2I is 1e-11 U2U is 1e-15
 
 vehicle_path_config:
@@ -21,10 +21,10 @@ vehicle_path_config:
 
 uav_config:
   pos:
-    - [-25, 10, -25]
-    - [-25, 10, 25]
-    - [25, 10, -25]
-    - [25, 10, 25]
+    - [-250, 100, -250]
+    - [-250, 100, 250]
+    - [250, 100, -250]
+    - [250, 100, 250]
 
   bandwidth: 1e6        # Hz or 1MHz
   E_n: 7e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut

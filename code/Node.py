@@ -20,6 +20,14 @@ class Node:
         offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
         return max(offloading_delay, computation_delay)
 
+    def target_node_offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
+        computation_delay = (data_size_on_local * target_node.w) / target_node.C_n
+        offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
+        print("---:", target_node.type, target_node.id, " com_delay:", computation_delay,
+              " off_delay:", offloading_delay, " node_dis:", self.get_dis(self.position, target_node.position),
+              " rate:", self.get_transmission_rate(target_node), " bandwidth:", self.bandwidth, " loss:", self.get_path_loss(target_node))
+        return max(offloading_delay, computation_delay)
+
     def los_probability_U2V(self, target_position):
         """
         计算车辆与无人机之间的LoS概率。
@@ -37,7 +45,6 @@ class Node:
         probability = 1 / (1 + self.config['communication_config']["eta1"] * np.exp(
             -self.config['communication_config']["eta2"] * (
                     elevation_angle - self.config['communication_config']["eta1"])))
-
         return probability
 
     def path_loss_U2V(self, target_position):
@@ -60,7 +67,7 @@ class Node:
         L_total = h_LoS * L_LoS + h_NLoS * L_NLoS
         return L_total
 
-    def path_loss_V2V(self, target_position, zeta_mode='convoy'):
+    def path_loss_V2V(self, target_position, zeta_mode='reverse'):
         """
         计算城市环境中车辆之间的路径损耗。this model excerpted from <Path Loss Modeling for Vehicle-to-Vehicle Communications>
         :param target_position:
@@ -104,13 +111,15 @@ class Node:
         # print('this id',self.id,'target id :',target_node.id)
         loss = 0
         if self.type == "uav" and target_node.type == "uav":
-            loss = self.path_loss_U2U(target_node.position)
+            return self.path_loss_U2U(target_node.position)
+
         elif (self.type == "uav" and target_node.type == "vehicle") or (
                 self.type == "vehicle" and target_node.type == "uav"):
-            loss = self.path_loss_U2V(target_node.position)
+            return self.path_loss_U2V(target_node.position)
+
         else:
-            loss = self.path_loss_V2V(target_node.position)
-        return loss
+            return self.path_loss_V2V(target_node.position)
+
 
     def energy_consumption_of_node_transmission(self, data_size, target_node):
         """
@@ -159,8 +168,8 @@ class UAV(Node):
     def node_is_in_range(self, node):
         if node.type == 'uav':
             return True
-        if (node.position[0] <= self.position[0] + 25) and (node.position[0] >= self.position[0] - 25) \
-                and (node.position[2] <= self.position[2] + 25) and (node.position[2] >= self.position[2] - 25):
+        if (node.position[0] <= self.position[0] + 250) and (node.position[0] >= self.position[0] - 250) \
+                and (node.position[2] <= self.position[2] + 250) and (node.position[2] >= self.position[2] - 250):
             return True
         return False
 
@@ -177,10 +186,10 @@ class Vehicle(Node):
 
     def node_is_in_range(self, node):
         if node.type == 'uav' \
-                and node.position[0] + 25 >= self.position[0] >= node.position[0] - 25 \
-                and node.position[2] + 25 >= self.position[2] >= node.position[2] - 25:
+                and node.position[0] + 250 >= self.position[0] >= node.position[0] - 250 \
+                and node.position[2] + 250 >= self.position[2] >= node.position[2] - 250:
             return True
-        if self.get_dis(self.position, node.position) <= 50:
+        if self.get_dis(self.position, node.position) <= 500:
             return True
         return False
 

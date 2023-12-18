@@ -4,6 +4,7 @@ from gymnasium import spaces
 from PathCreator import PathCreator
 import sys
 from Node import *
+import math
 
 
 class OffloadingEnv(gymnasium.Env):
@@ -32,6 +33,9 @@ class OffloadingEnv(gymnasium.Env):
                                         self.config['random_seed'])
         self.path_creator.createPath()
         self.vehicle_paths = self.path_creator.pathPoint
+        for i in self.vehicle_paths:
+            for j in range(len(i)):
+                i[j] = np.array([i[j][0] * 10, i[j][1] * 10, i[j][2] * 10])
 
         # 时间线 随机一个时间点用于表示一个不确定的时间点进入任务计算状态
         self.time_line = random.randint(0, 1500)
@@ -42,14 +46,15 @@ class OffloadingEnv(gymnasium.Env):
             self.nodes.append(UAV(self.config, i))
         # 定义车
         for i in range(self.config['vehicle_path_config']["vehicle_num"]):
-            self.nodes.append(Vehicle(self.config, i, self.vehicle_paths[i], self.time_line))
+            self.nodes.append(
+                Vehicle(self.config, i + len(self.config['uav_config']['pos']), self.vehicle_paths[i], self.time_line))
         # 定义任务
         self.data_size = self.config['data_size']
 
     def step(self, action):
         # print("执行了step：", self.current_step + 1, "次")
         task_split_granularity = self.config['task_split_granularity'][action]
-        data_size_on_local = int(task_split_granularity * self.data_size)
+        data_size_on_local = math.ceil(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
 
         # 更新车辆的位置与时间线
@@ -85,8 +90,9 @@ class OffloadingEnv(gymnasium.Env):
 
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
-        print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->", end=em)
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) +"size:"+str(self.data_size)+ "-->", end=em)
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->", end=em)
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "size:" + str(
+        #     self.data_size) + "-->", end=em)
         if done:
             print("finished")
         return state, reward, done, truncated, info
@@ -104,6 +110,7 @@ class OffloadingEnv(gymnasium.Env):
         # 随机选择一个无人机节点以接收一个任务
         node_index = random.randint(0, len(self.config['uav_config']['pos']) - 1)
         self.current_node = self.nodes[node_index]
+        print("first:", self.current_node.type, self.current_node.id)
         self.target_node = self.choose_target_node(self.current_node)
 
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
@@ -114,11 +121,10 @@ class OffloadingEnv(gymnasium.Env):
         print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
         print("\033[93m" + "-" * 50 + "\033[0m")
         # print("\033[93m timeline:" + str(self.time_line) + "\033[0m")
-        print("offloading_route")
-        print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->",
-              end='')
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11)+"size:"+str(self.data_size) + " -->",
-        #       )
+        # print("offloading_route")
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "-->",
+        #       end='')
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + " -->")
         return initial_state, info
 
     def render(self, mode='console'):
@@ -130,23 +136,26 @@ class OffloadingEnv(gymnasium.Env):
     def choose_target_node(self, current_node):
         min_value = sys.maxsize
         min_index = -1
-        print("\n choose:" + str(self.current_node.type + str(self.current_node.id)))
+        # print("\n choose:" + str(self.current_node.type + str(self.current_node.id)))
+        print("one choose-->")
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             assert current_node.id != self.nodes[i].id
+            print("curent:", current_node.type, current_node.id, end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
-            t = current_node.offloading_time(1, 1, self.nodes[i])
+            t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
             weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
                 't_weight'] * t
-            if self.nodes[i].type == 'vehicle':
-                print("time_line:", self.time_line, self.nodes[i].type, " ", self.nodes[i].id, " ",
-                      self.nodes[i].position, end='')
+            # print(self.nodes[i].type,self.nodes[i].id," t", t, " e:", e, " weigth:",weight," cur:",self.current_node.id," candinate:",self.nodes[i].id)
+            # if self.nodes[i].type == 'vehicle':
+            #     print("time_line:", self.time_line, self.nodes[i].type, " ", self.nodes[i].id, " ",
+            #           self.nodes[i].position, end='')
             if weight < min_value:
                 min_value = weight
                 min_index = i
-        print()
+        # print()
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
@@ -164,10 +173,11 @@ class OffloadingEnv(gymnasium.Env):
 
     def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
         assert current_node.id != target_node.id
-        e = current_node.energy_consumption_of_node_computation(
-            data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
-        t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        return e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']
+        return 0
+        # e = current_node.energy_consumption_of_node_computation(
+        #     data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
+        # t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
+        # return e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']
 #
 #
 # myenv = OffloadingEnv()

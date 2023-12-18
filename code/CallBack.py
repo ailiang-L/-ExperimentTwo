@@ -56,7 +56,10 @@ class CustomCallback(BaseCallback):
         :return: If the callback returns False, training is aborted early.
         """
         # 每间隔5个步骤记录一次奖励
-        # print(self.locals['infos'][0]['reward'])
+        print(self.locals['infos'][0])
+        if(self.locals['infos'][0].has_key('done')):
+            total_delay= self.locals['infos'][0]['total_delay']
+            energy_cost=self.locals['infos'][0]['energy_cost']
         if self.num_timesteps % 5 == 0:
             # 获取奖励值
             step_reward = self.locals['infos'][0]['reward']

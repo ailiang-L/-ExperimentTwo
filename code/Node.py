@@ -23,9 +23,9 @@ class Node:
     def target_node_offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
         computation_delay = (data_size_on_local * target_node.w) / target_node.C_n
         offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
-        print("---:", target_node.type, target_node.id, " com_delay:", computation_delay,
-              " off_delay:", offloading_delay, " node_dis:", self.get_dis(self.position, target_node.position),
-              " rate:", self.get_transmission_rate(target_node), " bandwidth:", self.bandwidth, " loss:", self.get_path_loss(target_node))
+        # print("---:", target_node.type, target_node.id, " com_delay:", computation_delay,
+        #       " off_delay:", offloading_delay, " node_dis:", self.get_dis(self.position, target_node.position),
+        #       " rate:", self.get_transmission_rate(target_node), " bandwidth:", self.bandwidth, " loss:", self.get_path_loss(target_node))
         return max(offloading_delay, computation_delay)
 
     def los_probability_U2V(self, target_position):
@@ -140,10 +140,6 @@ class Node:
         """
 
         loss = self.get_path_loss(target_node)
-        # print("\033[93m" + "dis:" + str(self.get_dis(self.position, target_node.position)) + "\033[0m",end='---')
-        # print("\033[93m" + "loss:" + str(loss) + "\033[0m", end='---')
-        # print("\033[93m" + "rate:" + str(self.bandwidth * math.log2(
-        #     1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))) + "\033[0m")
         return self.bandwidth * math.log2(
             1 + self.P_n / (self.config['communication_config']['p_noise'] * 10 ** (loss / 10)))
 

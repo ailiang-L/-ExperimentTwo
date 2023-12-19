@@ -42,6 +42,8 @@ class OffloadingEnv(gymnasium.Env):
         self.total_delay_of_task = 0
         self.total_energy_cost_of_task = 0
         self.total_reward_of_episode = 0
+        self.max_delay = 1
+        self.max_cost = 1
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
         # 定义无人机
@@ -60,7 +62,7 @@ class OffloadingEnv(gymnasium.Env):
         data_size_on_remote = self.data_size - data_size_on_local
 
         # 计算奖励值
-        reward, time, energy = self.get_reward(self.current_node, self.target_node, data_size_on_local,
+        reward, energy, time = self.get_reward(self.current_node, self.target_node, data_size_on_local,
                                                data_size_on_remote)
         # 更新车辆的位置与时间线
         time_step = math.ceil(time / self.config['vehicle_path_config']['time_slot'])
@@ -102,7 +104,8 @@ class OffloadingEnv(gymnasium.Env):
         #     self.data_size) + "-->", end=em)
         if done:
             print("finished")
-            print("\033[92m timeline:" + "total delay: " + str(self.total_delay_of_task) + " energy cost:" + str(
+            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                self.total_delay_of_task) + " energy cost:" + str(
                 self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
@@ -190,6 +193,12 @@ class OffloadingEnv(gymnasium.Env):
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        return e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight'], e, t
+        if e > self.max_cost:
+            self.max_cost = e
+        if t > self.max_delay:
+            self.max_delay = t
+        e = e / self.max_cost
+        t = t / self.max_delay
+        return -(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t
 
 # todo reset的seed报错未解决

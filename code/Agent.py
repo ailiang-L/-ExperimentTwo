@@ -29,5 +29,5 @@ call_back = CustomCallback(0)
 # 设置log名
 training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
 # 训练模型
-model.learn(total_timesteps=100, callback=call_back, tb_log_name=training_time, log_interval=4)
+model.learn(total_timesteps=1000000, callback=call_back, tb_log_name=training_time, log_interval=4)
 

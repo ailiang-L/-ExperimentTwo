@@ -41,6 +41,7 @@ class OffloadingEnv(gymnasium.Env):
         self.time_line = random.randint(0, 1500)
         self.total_delay_of_task = 0
         self.total_energy_cost_of_task = 0
+        self.total_reward_of_episode = 0
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
         # 定义无人机
@@ -71,6 +72,7 @@ class OffloadingEnv(gymnasium.Env):
                 i.run_step(self.time_line)
         self.total_energy_cost_of_task += energy
         self.total_delay_of_task += time
+        self.total_reward_of_episode += reward
 
         time_step = 0
         energy = 0
@@ -91,8 +93,8 @@ class OffloadingEnv(gymnasium.Env):
         done = bool(self.data_size == 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
-        info = {"reward": reward}  # 附加信息字典
 
+        info = {"reward": reward}  # 附加信息字典
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
         print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
@@ -101,10 +103,11 @@ class OffloadingEnv(gymnasium.Env):
         if done:
             print("finished")
             print("\033[92m timeline:" + "total delay: " + str(self.total_delay_of_task) + " energy cost:" + str(
-                self.total_energy_cost_of_task) + "\033[0m")
-            info["total_delay"]=self.total_delay_of_task
-            info["energy_cost"]=self.total_energy_cost_of_task
-            info["done"]=done
+                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            info["total_delay"] = self.total_delay_of_task
+            info["energy_cost"] = self.total_energy_cost_of_task
+            info["done"] = done
+            info["episode_reward"] = self.total_reward_of_episode
         return state, reward, done, truncated, info
 
     def reset(self, seed=1):
@@ -112,6 +115,7 @@ class OffloadingEnv(gymnasium.Env):
         self.time_line = random.randint(0, 1500)
         self.total_delay_of_task = 0
         self.total_energy_cost_of_task = 0
+        self.total_reward_of_episode = 0
         self.data_size = self.config['data_size']
         self.current_step = 1
         self.episode += 1

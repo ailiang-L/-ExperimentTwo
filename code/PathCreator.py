@@ -73,7 +73,7 @@ pos = [(-46.3, 16.4), (-32.3, 8.9), (-32.2, 31.6), (-32.2, 0.6), (-32.2, -2), (-
 
 
 class PathCreator:
-    def __init__(self, carSpeed, runTime, timeSlot, pathNum, forwardProbability,random_seed):
+    def __init__(self, carSpeed, runTime, timeSlot, pathNum, forwardProbability, random_seed):
         self.carSpeed = carSpeed
         self.timeSlot = timeSlot
         self.pathNum = pathNum  # path的数量
@@ -267,11 +267,12 @@ class PathCreator:
                             # 将节点加入到路径当中
                             self.pathPoint[i].append(np.array([pos[curentNode][0], 0, pos[curentNode][1]]))
 
-# pathcreator=PathCreator(0.8,2000,0.2,1,0.5)
+
+# pathcreator = PathCreator(0.8, 4000, 0.2, 10, 0.5,1)
 # pathcreator.createPath()
 #
-# X =[x[0] for x in pathcreator.pathPoint[0]]
-# Y=[x[2] for x in pathcreator.pathPoint[0]]
-# plt.subplots_adjust(wspace=0.5,hspace=0.5)
+# X = [x[0] for x in pathcreator.pathPoint[9]]
+# Y = [x[2] for x in pathcreator.pathPoint[9]]
+# plt.subplots_adjust(wspace=0.5, hspace=0.5)
 # plt.scatter(X, Y)
 # plt.show()

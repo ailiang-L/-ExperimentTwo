@@ -1,4 +1,6 @@
 from stable_baselines3.common.callbacks import BaseCallback
+import os
+import time
 
 
 class CustomCallback(BaseCallback):
@@ -10,6 +12,10 @@ class CustomCallback(BaseCallback):
 
     def __init__(self, verbose=0):
         super().__init__(verbose)
+        self.episode_count = 0
+        self.model_path = '../model/' + time.strftime('%Y-%m-%d-%H-%M', time.localtime())
+        os.makedirs(self.model_path, exist_ok=True)
+        os.makedirs('../log', exist_ok=True)
         # Those variables will be accessible in the callback
         # (they are defined in the base class)
         # The RL model
@@ -32,10 +38,6 @@ class CustomCallback(BaseCallback):
         """
         This method is called before the first rollout starts.
         """
-
-        # print(self.model)
-        # print(self.training_env)
-        # print(self.locals)
         pass
 
     def _on_rollout_start(self) -> None:
@@ -55,23 +57,28 @@ class CustomCallback(BaseCallback):
 
         :return: If the callback returns False, training is aborted early.
         """
-        # 每间隔5个步骤记录一次奖励
-        print(self.locals['infos'][0])
-        if(self.locals['infos'][0].has_key('done')):
-            total_delay= self.locals['infos'][0]['total_delay']
-            energy_cost=self.locals['infos'][0]['energy_cost']
-        if self.num_timesteps % 5 == 0:
-            # 获取奖励值
-            step_reward = self.locals['infos'][0]['reward']
-            self.logger.record("reward", step_reward)
-            self.logger.dump(step=self.num_timesteps)
+        if 'done' in self.locals['infos'][0]:
+            self.episode_count += 1
+            if self.episode_count % 1000 == 0:
+                self.model.save(self.model_path + "/episode-" + str(self.episode_count))
+
+            if self.episode_count % 5 == 0:
+                total_delay = self.locals['infos'][0]['total_delay']
+                energy_cost = self.locals['infos'][0]['energy_cost']
+                episode_reward = self.locals['infos'][0]['episode_reward']
+                episode_length = self.locals['infos'][0]['episode']['l']
+
+                self.logger.record("episode_reward", episode_reward)
+                self.logger.record("energy_cost", energy_cost)
+                self.logger.record("total_delay", total_delay)
+                self.logger.record("episode_length", episode_length)
+                self.logger.dump(step=self.num_timesteps)
         return True
 
     def _on_rollout_end(self) -> None:
         """
         This event is triggered before updating the policy.
         """
-        #print("update policy :",self.num_timesteps)
         pass
 
     def _on_training_end(self) -> None:

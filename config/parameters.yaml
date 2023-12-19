@@ -45,11 +45,11 @@ vehicle_config:
 
 node_choose_config:
   e_weight: 1
-  t_weight: 15
+  t_weight: 1
 
 reward_config:
-  e_weight: 1
-  t_weight: 1
+  e_weight: 0.5
+  t_weight: 0.5
 
 data_size: 1e9 #bits
 

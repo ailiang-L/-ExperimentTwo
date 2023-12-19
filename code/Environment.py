@@ -193,10 +193,10 @@ class OffloadingEnv(gymnasium.Env):
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        if e > self.max_cost:
-            self.max_cost = e
-        if t > self.max_delay:
-            self.max_delay = t
+        # if e > self.max_cost:
+        #     self.max_cost = e
+        # if t > self.max_delay:
+        #     self.max_delay = t
         e = e / self.max_cost
         t = t / self.max_delay
         return -(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t

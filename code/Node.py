@@ -116,10 +116,8 @@ class Node:
         elif (self.type == "uav" and target_node.type == "vehicle") or (
                 self.type == "vehicle" and target_node.type == "uav"):
             return self.path_loss_U2V(target_node.position)
-
         else:
             return self.path_loss_V2V(target_node.position)
-
 
     def energy_consumption_of_node_transmission(self, data_size, target_node):
         """
@@ -171,12 +169,17 @@ class UAV(Node):
 
 
 class Vehicle(Node):
-    def __init__(self, config, id, path, time_line):
-        super(Vehicle, self).__init__(id=id, pos=[0, 0, 0], E_n=config['vehicle_config']['E_n'],
-                                      P_n=config['vehicle_config']['P_n'],
+    def __init__(self, config, id, path, time_line, uav_len):
+        super(Vehicle, self).__init__(id=id,
+                                      pos=[0, 0, 0],
+                                      E_n=config['vehicle_config']['E_n'][id - uav_len],
+                                      P_n=config['vehicle_config']['P_n'][
+                                          (id - uav_len) % len(config['vehicle_config']['P_n'])],
                                       bandwidth=config['vehicle_config']['bandwidth'],
-                                      type=config['vehicle_config']['type'], w=config['vehicle_config']['w'],
-                                      C_n=config['vehicle_config']['C_n'], config=config)
+                                      type=config['vehicle_config']['type'],
+                                      w=config['vehicle_config']['w'],
+                                      C_n=config['vehicle_config']['C_n'][id - uav_len],
+                                      config=config)
         self.path = path
         self.position = self.path[time_line]
 

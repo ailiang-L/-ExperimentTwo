@@ -52,9 +52,32 @@ class OffloadingEnv(gymnasium.Env):
         # 定义车
         for i in range(self.config['vehicle_path_config']["vehicle_num"]):
             self.nodes.append(
-                Vehicle(self.config, i + len(self.config['uav_config']['pos']), self.vehicle_paths[i], self.time_line))
+                Vehicle(self.config, i + len(self.config['uav_config']['pos']), self.vehicle_paths[i], self.time_line,
+                        len(self.config['uav_config']['pos'])))
+
         # 定义任务
         self.data_size = self.config['data_size']
+
+        # 获得一些最大最小值以便于状态归一化
+        self.max_loss = self.config['max_loss_v2v'] if self.config['max_loss_v2v'] > self.config['max_loss_u2v'] else \
+            self.config['max_loss_u2v']
+        self.max_c_n = max(self.config['vehicle_config']['C_n'])
+        self.max_c_n = max(self.max_c_n, self.config['uav_config']['C_n'])
+
+        self.min_c_n = min(self.config['vehicle_config']['C_n'])
+        self.min_c_n = min(self.min_c_n, self.config['uav_config']['C_n'])
+
+        self.max_p_n = max(self.config['vehicle_config']['P_n'])
+        self.max_p_n = max(self.max_p_n, self.config['uav_config']['P_n'])
+
+        self.min_p_n = min(self.config['vehicle_config']['P_n'])
+        self.min_p_n = min(self.min_p_n, self.config['uav_config']['P_n'])
+
+        self.max_e_n = max(self.config['vehicle_config']['E_n'])
+        self.max_e_n = max(self.max_e_n, self.config['uav_config']['E_n'])
+
+        self.min_e_n = min(self.config['vehicle_config']['E_n'])
+        self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
 
     def step(self, action):
         task_split_granularity = self.config['task_split_granularity'][action]
@@ -76,10 +99,6 @@ class OffloadingEnv(gymnasium.Env):
         self.total_delay_of_task += time
         self.total_reward_of_episode += reward
 
-        time_step = 0
-        energy = 0
-        time = 0
-
         # 环境进入下一个状态
         self.current_node = self.target_node
         self.target_node = self.choose_target_node(self.current_node)
@@ -91,6 +110,7 @@ class OffloadingEnv(gymnasium.Env):
 
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
+
         # 检查是否为结束状态
         done = bool(self.data_size == 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         self.current_step += 1
@@ -129,7 +149,6 @@ class OffloadingEnv(gymnasium.Env):
         # 随机选择一个无人机节点以接收一个任务
         node_index = random.randint(0, len(self.config['uav_config']['pos']) - 1)
         self.current_node = self.nodes[node_index]
-        # print("first:", self.current_node.type, self.current_node.id)
         self.target_node = self.choose_target_node(self.current_node)
 
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
@@ -153,38 +172,42 @@ class OffloadingEnv(gymnasium.Env):
     def choose_target_node(self, current_node):
         min_value = sys.maxsize
         min_index = -1
-        # print("\n choose:" + str(self.current_node.type + str(self.current_node.id)))
-        # print("one choose-->")
+
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             assert current_node.id != self.nodes[i].id
-            # print("curent:", current_node.type, current_node.id, end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
             weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
                 't_weight'] * t
-            # print(self.nodes[i].type,self.nodes[i].id," t", t, " e:", e, " weigth:",weight," cur:",self.current_node.id," candinate:",self.nodes[i].id)
-            # if self.nodes[i].type == 'vehicle':
-            #     print("time_line:", self.time_line, self.nodes[i].type, " ", self.nodes[i].id, " ",
-            #           self.nodes[i].position, end='')
             if weight < min_value:
                 min_value = weight
                 min_index = i
-        # print()
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
     def construct_state(self, current_node, target_node, data_size):
         s_t = current_node.w * data_size
+        max_w = self.config['uav_config']['w'] if self.config['uav_config']['w'] > self.config['vehicle_config'][
+            'w'] else self.config['vehicle_config']['w']
+        max_size = self.config['data_size'] * max_w
+        s_t = s_t / max_size
+
         loss = current_node.get_path_loss(target_node)
-        c_nt = current_node.C_n
-        p_nt = current_node.P_n
-        e_nt = current_node.E_n
-        c_nt_next = target_node.C_n
-        p_nt_next = target_node.P_n
-        e_nt_next = target_node.E_n
+        loss = loss / self.max_loss
+
+        c_nt = (current_node.C_n - self.min_c_n) / (self.max_c_n - self.min_c_n)
+        p_nt = (current_node.P_n - self.min_p_n) / (self.max_p_n - self.min_p_n)
+        e_nt = (current_node.E_n - self.min_e_n) / (self.max_e_n - self.min_e_n)
+
+        c_nt_next = (target_node.C_n - self.min_c_n) / (self.max_c_n - self.min_c_n)
+        p_nt_next = (target_node.P_n - self.min_p_n) / (self.max_p_n - self.min_p_n)
+        e_nt_next = (target_node.E_n - self.min_e_n) / (self.max_e_n - self.min_e_n)
+        # print(
+        #     f"maxc:{self.max_c_n} minc:{self.min_c_n} currentc:{current_node.C_n} maxp:{self.max_p_n} minp:{self.min_p_n} currentp:{current_node.P_n} maxe:{self.max_e_n} mine:{self.min_e_n} currente:{current_node.E_n} targetc:{target_node.C_n} targetp:{target_node.P_n} targete:{target_node.E_n}"
+        # )
         state = np.array([s_t, loss, c_nt, p_nt, e_nt, c_nt_next, p_nt_next, e_nt_next], dtype=np.float32)
         return state
 
@@ -193,10 +216,6 @@ class OffloadingEnv(gymnasium.Env):
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        # if e > self.max_cost:
-        #     self.max_cost = e
-        # if t > self.max_delay:
-        #     self.max_delay = t
         e = e / self.max_cost
         t = t / self.max_delay
         return -(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t

@@ -35,10 +35,10 @@ def load_parameters():
     config['uav_config']['C_n'] = np.float32(config['uav_config']['C_n'])
 
     config['vehicle_config']['bandwidth'] = np.float32(config['vehicle_config']['bandwidth'])
-    config['vehicle_config']['E_n'] = np.float32(config['vehicle_config']['E_n'])
-    config['vehicle_config']['P_n'] = np.float32(config['vehicle_config']['P_n'])
+    config['vehicle_config']['E_n'] = np.array(config['vehicle_config']['E_n'], dtype=np.float32)
+    config['vehicle_config']['P_n'] = np.array(config['vehicle_config']['P_n'], dtype=np.float32)
     config['vehicle_config']['w'] = np.float32(config['vehicle_config']['w'])
-    config['vehicle_config']['C_n'] = np.float32(config['vehicle_config']['C_n'])
+    config['vehicle_config']['C_n'] = np.array(config['vehicle_config']['C_n'], dtype=np.float32)
 
     config['node_choose_config']['e_weight'] = np.float32(config['node_choose_config']['e_weight'])
     config['node_choose_config']['t_weight'] = np.float32(config['node_choose_config']['t_weight'])
@@ -49,4 +49,7 @@ def load_parameters():
     config['task_split_granularity'] = np.array(config['task_split_granularity'], dtype=np.float32)
 
     config['data_size'] = np.float32(config['data_size'])
+
+    config['max_loss_u2v'] = np.float32(config['max_loss_u2v'])
+    config['max_loss_v2v'] = np.float32(config['max_loss_v2v'])
     return config

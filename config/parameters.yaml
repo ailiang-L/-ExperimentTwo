@@ -42,7 +42,7 @@ vehicle_config:
   w: 8               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)
   C_n: [3e7,4e7,5e7,6e7,7e7,8e7,9e7,10e7,11e7,12e7]  # cycle/s --the available computation resource, i.e., in cycle/s, of node
 
-  vehicle_communication_range: 500 # m
+  vehicle_communication_range: 200 # m
 
 node_choose_config:
   e_weight: 1
@@ -59,7 +59,8 @@ task_split_granularity: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 random_seed: 1
 
 #max_loss_u2v: 113  # vehicle [0,0,0] uav [250,100,250]
-#max_loss_v2v: 121 # v1 [0,0,0] v2=[500,0,500]
-max_loss: 118
-min_loss: 90
+#max_loss_v2v: 121 # v1 [0,0,0] v2=[0,0,200]
+max_loss: 114
+# L_vv = L0vv + 10 * eta3* np.log10(d_vv /d0) +  X_eta4+zeta * Lcvv，if do not contain  X_eta4 and dis=10 ,the L_vv =86.5，but X_etz belong to [-5.1,+5.1] with 99.7% problality
+min_loss: 80
 

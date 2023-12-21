@@ -77,9 +77,9 @@ class Node:
 
         # 计算两车之间的距离
         d_vv = self.get_dis(self.position, target_position)
-        # 计算正态随机分布变量
+        d_vv = d_vv if d_vv>=self.config['communication_config']['d0'] else self.config['communication_config']['d0']
+        # 计算正态随机分布变量 绝大多数值（约 99.7%）将落在 [-5.1, 5.1] 的范围内（5.1 = 3 * 1.7）
         X_eta4 = np.random.normal(0, self.config['communication_config']["eta4"])
-
         # 根据zeta_mode来决定zeta的值
         if zeta_mode == 'reverse':
             zeta = 1

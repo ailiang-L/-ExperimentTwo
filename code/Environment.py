@@ -15,14 +15,14 @@ class OffloadingEnv(gymnasium.Env):
         # 设置随机种子
         random.seed(self.config['random_seed'])
         # 定义各个维度的取值范围
-        self.dim1_range = 50
-        self.dim2_range = 28
-        self.dim3_values = 11
-        self.dim4_values = 4
-        self.dim5_values = 11
-        self.dim6_values = 11
-        self.dim7_values = 4
-        self.dim8_values = 11
+        self.dim1_range = self.config['task_dimensions']
+        self.dim2_range = self.config['max_loss']-self.config['min_loss']+1
+        self.dim3_values = len(self.config['vehicle_config']['C_n'])+1
+        self.dim4_values = len(self.config['vehicle_config']['P_n'])+1
+        self.dim5_values = len(self.config['vehicle_config']['P_n'])+1
+        self.dim6_values = len(self.config['vehicle_config']['C_n'])+1
+        self.dim7_values = len(self.config['vehicle_config']['P_n'])+1
+        self.dim8_values = len(self.config['vehicle_config']['E_n'])+1
 
         # 定义状态空间为 MultiDiscrete
         self.observation_space = spaces.MultiDiscrete([
@@ -97,6 +97,7 @@ class OffloadingEnv(gymnasium.Env):
         self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
         self.task_interval = self.config['data_size'] / self.config['task_dimensions']
 
+
     def step(self, action):
         # 处理数据值
         data_size_on_local, data_size_on_remote = self.deal_data_size(action)
@@ -135,7 +136,7 @@ class OffloadingEnv(gymnasium.Env):
         info = {"reward": reward}  # 附加信息字典
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
         # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "size:" + str(
         #     self.data_size) + "-->", end=em)
         if done:
@@ -175,9 +176,9 @@ class OffloadingEnv(gymnasium.Env):
         print("\033[93m" + "-" * 50 + "\033[0m")
         print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
         print("\033[93m" + "-" * 50 + "\033[0m")
-        # print("offloading_route")
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
-        #       end='')
+        print("offloading_route")
+        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
+              end='')
         # print("initial_state: ", initial_state)
         return initial_state, info
 
@@ -190,27 +191,34 @@ class OffloadingEnv(gymnasium.Env):
     def choose_target_node(self, current_node):
         min_value = sys.maxsize
         min_index = -1
-        print("********************************one choose*****************************")
-        vehicle_weight=[]
+        # print("********************************one choose*****************************")
+        vehicle_weight = {}
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             assert current_node.id != self.nodes[i].id
-            print(self.nodes[i].type,self.nodes[i].id,end=" ")
+            # print(self.nodes[i].type, self.nodes[i].id, end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
-            print(" e:",e," t:",t,end=" ")
+            # print(" e:", e, " t:", t, end=" ")
             weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
                 't_weight'] * t
-            print(" weight:",weight)
-            if self.nodes[i].type=="vehicle":
-                vehicle_weight.append(weight)
+            # print(" weight:", weight)
+            if self.nodes[i].type == "vehicle":
+                vehicle_weight[i] = weight
+            # 这里是必须的，因为无法保证没有车辆的情况
             if weight < min_value:
                 min_value = weight
                 min_index = i
-        if len(vehicle_weight)!=0:
-            pass
+        # 如果此时当前无人机拥有车辆，那么应该优先选择车辆
+        if len(vehicle_weight) != 0:
+            min_value = sys.maxsize
+            min_index = -1
+            for i, weight in vehicle_weight.items():
+                if weight < min_value:
+                    min_value = weight
+                    min_index = i
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
@@ -223,6 +231,7 @@ class OffloadingEnv(gymnasium.Env):
         s_t = s_t / self.config['task_dimensions']
 
         loss = math.ceil(current_node.get_path_loss(target_node))
+        # print("currentpos:",current_node.position," targetpos:",target_node.position," type:",current_node.type,target_node.type," loss:",loss," dis:",current_node.get_dis(current_node.position,target_node.position))
         assert loss in range(self.config['min_loss'], self.config['max_loss'] + 1), "loss 值超出范围了"
         loss = (loss - self.min_loss) / (self.max_loss - self.min_loss)
 

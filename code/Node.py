@@ -151,7 +151,6 @@ class Node:
                        (position1[1] - position2[1]) ** 2 +
                        (position1[2] - position2[2]) ** 2)
 
-
 class UAV(Node):
     def __init__(self, config, id):
         super(UAV, self).__init__(id=id, pos=config['uav_config']['pos'][id], E_n=config['uav_config']['E_n'],
@@ -188,7 +187,7 @@ class Vehicle(Node):
                 and node.position[0] + 250 >= self.position[0] >= node.position[0] - 250 \
                 and node.position[2] + 250 >= self.position[2] >= node.position[2] - 250:
             return True
-        if self.get_dis(self.position, node.position) <= 500:
+        if self.get_dis(self.position, node.position) <= self.config['vehicle_config']['vehicle_communication_range']:
             return True
         return False
 

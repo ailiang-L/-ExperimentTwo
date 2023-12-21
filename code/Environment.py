@@ -14,12 +14,29 @@ class OffloadingEnv(gymnasium.Env):
         self.config = config
         # 设置随机种子
         random.seed(self.config['random_seed'])
-        # 定义状态空间和动作空间
-        self.observation_space = spaces.Box(low=np.array([0, -np.inf, 0, 0, 0, 0, 0, 0]),
-                                            high=np.array(
-                                                [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),
-                                            dtype=np.float32)
-        self.action_space = spaces.Discrete(10)  # 动作空间大小为10
+        # 定义各个维度的取值范围
+        self.dim1_range = 50
+        self.dim2_range = 28
+        self.dim3_values = 11
+        self.dim4_values = 4
+        self.dim5_values = 11
+        self.dim6_values = 11
+        self.dim7_values = 4
+        self.dim8_values = 11
+
+        # 定义状态空间为 MultiDiscrete
+        self.observation_space = spaces.MultiDiscrete([
+            self.dim1_range,
+            self.dim2_range,
+            self.dim3_values,
+            self.dim4_values,
+            self.dim5_values,
+            self.dim6_values,
+            self.dim7_values,
+            self.dim8_values
+        ])
+
+        self.action_space = spaces.Discrete(len(self.config['task_split_granularity']))  # 动作空间大小为50
         self.current_step = 0
         self.episode = 0
         self.current_node = None
@@ -59,8 +76,8 @@ class OffloadingEnv(gymnasium.Env):
         self.data_size = self.config['data_size']
 
         # 获得一些最大最小值以便于状态归一化
-        self.max_loss = self.config['max_loss_v2v'] if self.config['max_loss_v2v'] > self.config['max_loss_u2v'] else \
-            self.config['max_loss_u2v']
+        self.max_loss = self.config['max_loss']
+        self.min_loss = self.config['min_loss']
         self.max_c_n = max(self.config['vehicle_config']['C_n'])
         self.max_c_n = max(self.max_c_n, self.config['uav_config']['C_n'])
 
@@ -78,12 +95,11 @@ class OffloadingEnv(gymnasium.Env):
 
         self.min_e_n = min(self.config['vehicle_config']['E_n'])
         self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
+        self.task_interval = self.config['data_size'] / self.config['task_dimensions']
 
     def step(self, action):
-        task_split_granularity = self.config['task_split_granularity'][action]
-        data_size_on_local = math.ceil(task_split_granularity * self.data_size)
-        data_size_on_remote = self.data_size - data_size_on_local
-
+        # 处理数据值
+        data_size_on_local, data_size_on_remote = self.deal_data_size(action)
         # 计算奖励值
         reward, energy, time = self.get_reward(self.current_node, self.target_node, data_size_on_local,
                                                data_size_on_remote)
@@ -112,14 +128,14 @@ class OffloadingEnv(gymnasium.Env):
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
 
         # 检查是否为结束状态
-        done = bool(self.data_size == 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
+        done = bool(self.data_size <= 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
 
         info = {"reward": reward}  # 附加信息字典
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
         # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "size:" + str(
         #     self.data_size) + "-->", end=em)
         if done:
@@ -131,6 +147,7 @@ class OffloadingEnv(gymnasium.Env):
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
+        # print("\n state: ", state)
         return state, reward, done, truncated, info
 
     def reset(self, seed=1):
@@ -158,9 +175,10 @@ class OffloadingEnv(gymnasium.Env):
         print("\033[93m" + "-" * 50 + "\033[0m")
         print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
         print("\033[93m" + "-" * 50 + "\033[0m")
-        print("offloading_route")
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
-              end='')
+        # print("offloading_route")
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
+        #       end='')
+        # print("initial_state: ", initial_state)
         return initial_state, info
 
     def render(self, mode='console'):
@@ -172,19 +190,27 @@ class OffloadingEnv(gymnasium.Env):
     def choose_target_node(self, current_node):
         min_value = sys.maxsize
         min_index = -1
-
+        print("********************************one choose*****************************")
+        vehicle_weight=[]
         for i in range(len(self.nodes)):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             assert current_node.id != self.nodes[i].id
+            print(self.nodes[i].type,self.nodes[i].id,end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
+            print(" e:",e," t:",t,end=" ")
             weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
                 't_weight'] * t
+            print(" weight:",weight)
+            if self.nodes[i].type=="vehicle":
+                vehicle_weight.append(weight)
             if weight < min_value:
                 min_value = weight
                 min_index = i
+        if len(vehicle_weight)!=0:
+            pass
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
@@ -192,11 +218,13 @@ class OffloadingEnv(gymnasium.Env):
         s_t = current_node.w * data_size
         max_w = self.config['uav_config']['w'] if self.config['uav_config']['w'] > self.config['vehicle_config'][
             'w'] else self.config['vehicle_config']['w']
-        max_size = self.config['data_size'] * max_w
-        s_t = s_t / max_size
 
-        loss = current_node.get_path_loss(target_node)
-        loss = loss / self.max_loss
+        s_t = int(s_t / (self.task_interval * max_w))
+        s_t = s_t / self.config['task_dimensions']
+
+        loss = math.ceil(current_node.get_path_loss(target_node))
+        assert loss in range(self.config['min_loss'], self.config['max_loss'] + 1), "loss 值超出范围了"
+        loss = (loss - self.min_loss) / (self.max_loss - self.min_loss)
 
         c_nt = (current_node.C_n - self.min_c_n) / (self.max_c_n - self.min_c_n)
         p_nt = (current_node.P_n - self.min_p_n) / (self.max_p_n - self.min_p_n)
@@ -219,5 +247,11 @@ class OffloadingEnv(gymnasium.Env):
         e = e / self.max_cost
         t = t / self.max_delay
         return -(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t
+
+    def deal_data_size(self, action):
+        task_split_granularity = self.config['task_split_granularity'][action]
+        data_size_on_local = math.ceil(task_split_granularity * self.data_size)
+        data_size_on_remote = self.data_size - data_size_on_local
+        return data_size_on_local, data_size_on_remote
 
 # todo reset的seed报错未解决

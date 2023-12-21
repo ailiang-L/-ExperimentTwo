@@ -46,10 +46,8 @@ def load_parameters():
     config['reward_config']['e_weight'] = np.float32(config['reward_config']['e_weight'])
     config['reward_config']['t_weight'] = np.float32(config['reward_config']['t_weight'])
 
-    config['task_split_granularity'] = np.array(config['task_split_granularity'], dtype=np.float32)
+    config['task_split_granularity'] = np.float32(config['task_split_granularity'])
+    config['task_dimensions'] = np.float32(config['task_dimensions'])
 
     config['data_size'] = np.float32(config['data_size'])
-
-    config['max_loss_u2v'] = np.float32(config['max_loss_u2v'])
-    config['max_loss_v2v'] = np.float32(config['max_loss_v2v'])
     return config

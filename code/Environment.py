@@ -16,13 +16,13 @@ class OffloadingEnv(gymnasium.Env):
         random.seed(self.config['random_seed'])
         # 定义各个维度的取值范围
         self.dim1_range = self.config['task_dimensions']
-        self.dim2_range = self.config['max_loss']-self.config['min_loss']+1
-        self.dim3_values = len(self.config['vehicle_config']['C_n'])+1
-        self.dim4_values = len(self.config['vehicle_config']['P_n'])+1
-        self.dim5_values = len(self.config['vehicle_config']['P_n'])+1
-        self.dim6_values = len(self.config['vehicle_config']['C_n'])+1
-        self.dim7_values = len(self.config['vehicle_config']['P_n'])+1
-        self.dim8_values = len(self.config['vehicle_config']['E_n'])+1
+        self.dim2_range = self.config['max_loss'] - self.config['min_loss'] + 1
+        self.dim3_values = len(self.config['vehicle_config']['C_n']) + 1
+        self.dim4_values = len(self.config['vehicle_config']['P_n']) + 1
+        self.dim5_values = len(self.config['vehicle_config']['P_n']) + 1
+        self.dim6_values = len(self.config['vehicle_config']['C_n']) + 1
+        self.dim7_values = len(self.config['vehicle_config']['P_n']) + 1
+        self.dim8_values = len(self.config['vehicle_config']['E_n']) + 1
 
         # 定义状态空间为 MultiDiscrete
         self.observation_space = spaces.MultiDiscrete([
@@ -96,7 +96,6 @@ class OffloadingEnv(gymnasium.Env):
         self.min_e_n = min(self.config['vehicle_config']['E_n'])
         self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
         self.task_interval = self.config['data_size'] / self.config['task_dimensions']
-
 
     def step(self, action):
         # 处理数据值
@@ -249,18 +248,30 @@ class OffloadingEnv(gymnasium.Env):
         return state
 
     def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
+        """
+        观测到单步里面的最大时延为40 ，能耗为200
+        """
         assert current_node.id != target_node.id
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        e = e / self.max_cost
-        t = t / self.max_delay
-        return -(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t
+        assert e <= 170
+        assert t <= 40
+        e = e / 170
+        t = t / 40
+        # if self.max_cost<e:
+        #     self.max_cost=e
+        # if self.max_delay<t:
+        #     self.max_delay=t
+        # print("energy:", e, " time:", t," max_ene:",self.max_cost," max_delay:",self.max_delay)
+        return 2-(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t
 
     def deal_data_size(self, action):
+        # print("action:",action,end=" ")
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = math.ceil(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
+        # print(" data_size_on_local:",data_size_on_local," data_size_on_remote:",data_size_on_remote)
         return data_size_on_local, data_size_on_remote
 
 # todo reset的seed报错未解决

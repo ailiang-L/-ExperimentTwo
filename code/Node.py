@@ -23,9 +23,6 @@ class Node:
     def target_node_offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
         computation_delay = (data_size_on_local * target_node.w) / target_node.C_n
         offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
-        # print("---:", target_node.type, target_node.id, " com_delay:", computation_delay,
-        #       " off_delay:", offloading_delay, " node_dis:", self.get_dis(self.position, target_node.position),
-        #       " rate:", self.get_transmission_rate(target_node), " bandwidth:", self.bandwidth, " loss:", self.get_path_loss(target_node))
         return max(offloading_delay, computation_delay)
 
     def los_probability_U2V(self, target_position):
@@ -77,7 +74,7 @@ class Node:
 
         # 计算两车之间的距离
         d_vv = self.get_dis(self.position, target_position)
-        d_vv = d_vv if d_vv>=self.config['communication_config']['d0'] else self.config['communication_config']['d0']
+        d_vv = d_vv if d_vv >= self.config['communication_config']['d0'] else self.config['communication_config']['d0']
         # 计算正态随机分布变量 绝大多数值（约 99.7%）将落在 [-5.1, 5.1] 的范围内（5.1 = 3 * 1.7）
         X_eta4 = np.random.normal(0, self.config['communication_config']["eta4"])
         # 根据zeta_mode来决定zeta的值
@@ -150,6 +147,7 @@ class Node:
         return np.sqrt((position1[0] - position2[0]) ** 2 +
                        (position1[1] - position2[1]) ** 2 +
                        (position1[2] - position2[2]) ** 2)
+
 
 class UAV(Node):
     def __init__(self, config, id):

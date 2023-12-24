@@ -58,9 +58,6 @@ task_split_granularity: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
 random_seed: 1
 
-#max_loss_u2v: 113  # vehicle [0,0,0] uav [250,100,250]
-#max_loss_v2v: 121 # v1 [0,0,0] v2=[0,0,200]
 max_loss: 114
-# L_vv = L0vv + 10 * eta3* np.log10(d_vv /d0) +  X_eta4+zeta * Lcvv，if do not contain  X_eta4 and dis=10 ,the L_vv =86.5，but X_etz belong to [-5.1,+5.1] with 99.7% problality
 min_loss: 80
 

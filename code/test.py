@@ -1,20 +1,17 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-# 生成服从均值为 0，标准差为 1.7 的正态分布随机变量数据
-X_eta4 = np.random.normal(0, 1.7, 10000)  # 生成 10000 个样本
+# 生成 x 值范围（从0.1到200，间隔0.1）
+x = np.linspace(0.1, 200, 1000)
+# 计算对数函数的值
+y = np.log(x)
 
-# 绘制直方图
+# 绘制对数函数的图像
 plt.figure(figsize=(8, 6))
-plt.hist(X_eta4, bins=50, density=True, alpha=0.7, color='skyblue')
-
-# 绘制正态分布曲线
-xmin, xmax = plt.xlim()
-x = np.linspace(xmin, xmax, 100)
-p = (1 / (1.7 * np.sqrt(2 * np.pi))) * np.exp(-(x - 0) ** 2 / (2 * 1.7 ** 2))
-plt.plot(x, p, 'k', linewidth=2)
-
-plt.title('服从均值为 0，标准差为 1.7 的正态分布随机变量')
-plt.xlabel('随机变量值')
-plt.ylabel('概率密度')
+plt.plot(x, y, label='y = log(x)')
+plt.xlabel('x')
+plt.ylabel('log(x)')
+plt.title('Plot of log(x) for x in range (0.1 to 200)')
+plt.grid(True)
+plt.legend()
 plt.show()

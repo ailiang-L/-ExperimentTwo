@@ -121,8 +121,6 @@ class OffloadingEnv(gymnasium.Env):
 
         # 节点切换以后对应数据大小也切换
         self.data_size = data_size_on_remote
-        data_size_on_local = 0
-        data_size_on_remote = 0
 
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
@@ -135,9 +133,6 @@ class OffloadingEnv(gymnasium.Env):
         info = {"reward": reward}  # 附加信息字典
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).ljust(11) + "size:" + str(
-        #     self.data_size) + "-->", end=em)
         if done:
             print("finished")
             print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
@@ -147,6 +142,9 @@ class OffloadingEnv(gymnasium.Env):
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
+        else:
+            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+            pass
         # print("\n state: ", state)
         return state, reward, done, truncated, info
 
@@ -171,7 +169,6 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        print()
         print("\033[93m" + "-" * 50 + "\033[0m")
         print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
         print("\033[93m" + "-" * 50 + "\033[0m")
@@ -231,7 +228,7 @@ class OffloadingEnv(gymnasium.Env):
 
         loss = math.ceil(current_node.get_path_loss(target_node))
         # print("currentpos:",current_node.position," targetpos:",target_node.position," type:",current_node.type,target_node.type," loss:",loss," dis:",current_node.get_dis(current_node.position,target_node.position))
-        assert loss in range(self.config['min_loss'], self.config['max_loss'] + 1), "loss 值超出范围了"
+        assert loss in range(self.config['min_loss'], self.config['max_loss'] + 1), f"loss:{loss} 值超出范围了"
         loss = (loss - self.min_loss) / (self.max_loss - self.min_loss)
 
         c_nt = (current_node.C_n - self.min_c_n) / (self.max_c_n - self.min_c_n)
@@ -250,28 +247,33 @@ class OffloadingEnv(gymnasium.Env):
     def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
         """
         观测到单步里面的最大时延为40 ，能耗为200
+        todo:目前可能会导致频繁卸载导致总的时延与能耗很大，但是奖励却很多
         """
         assert current_node.id != target_node.id
         e = current_node.energy_consumption_of_node_computation(
             data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        assert e <= 170
-        assert t <= 40
-        e = e / 170
-        t = t / 40
+        time = t
+        energy = e
+        e = e
+        t = t
+        # reward = - (e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']) # 收敛的奖励值约为0.66左右
+        reward = -1*e-1*t
+
         # if self.max_cost<e:
         #     self.max_cost=e
         # if self.max_delay<t:
         #     self.max_delay=t
-        # print("energy:", e, " time:", t," max_ene:",self.max_cost," max_delay:",self.max_delay)
-        return 2-(e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']), e, t
+        # print("energy:", energy, " time:", time, " max_ene:", self.max_cost, " max_delay:", self.max_delay)
+        # print("energy:", energy, " time:", time," reward:",reward)
+        return reward, energy, time
 
     def deal_data_size(self, action):
-        # print("action:",action,end=" ")
+        # print("action:", action, end=" ")
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = math.ceil(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
-        # print(" data_size_on_local:",data_size_on_local," data_size_on_remote:",data_size_on_remote)
+        # print(" data_size_on_local:", data_size_on_local, " data_size_on_remote:", data_size_on_remote, end=" ")
         return data_size_on_local, data_size_on_remote
 
 # todo reset的seed报错未解决

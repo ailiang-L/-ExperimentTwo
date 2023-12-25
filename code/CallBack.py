@@ -59,19 +59,18 @@ class CustomCallback(BaseCallback):
         """
         if 'done' in self.locals['infos'][0]:
             self.episode_count += 1
-            if self.episode_count % 2000 == 0:
+            if self.episode_count % 10000 == 0:
                 self.model.save(self.model_path + "/episode-" + str(self.episode_count))
 
             if self.episode_count % 10 == 0:
                 total_delay = self.locals['infos'][0]['total_delay']
                 energy_cost = self.locals['infos'][0]['energy_cost']
                 episode_reward = self.locals['infos'][0]['episode_reward']
-                episode_length = self.locals['infos'][0]['episode']['l']
 
                 self.logger.record("episode_reward", episode_reward)
                 self.logger.record("energy_cost", energy_cost)
-                self.logger.record("total_delay", total_delay)
-                self.logger.record("episode_length", episode_length)
+                self.logger.record("time_cost", total_delay)
+                self.logger.record("total_cost", energy_cost + total_delay)
                 self.logger.dump(step=self.num_timesteps)
         return True
 

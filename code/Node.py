@@ -18,6 +18,7 @@ class Node:
     def offloading_time(self, data_size_on_local, data_size_on_remote, target_node):
         computation_delay = (data_size_on_local * self.w) / self.C_n
         offloading_delay = data_size_on_remote / self.get_transmission_rate(target_node)
+        # print("offloading_delay:",offloading_delay," computation_delay:",computation_delay,end=" ")
         return max(offloading_delay, computation_delay)
 
     def target_node_offloading_time(self, data_size_on_local, data_size_on_remote, target_node):

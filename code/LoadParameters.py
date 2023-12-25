@@ -40,11 +40,8 @@ def load_parameters():
     config['vehicle_config']['w'] = np.float32(config['vehicle_config']['w'])
     config['vehicle_config']['C_n'] = np.array(config['vehicle_config']['C_n'], dtype=np.float32)
 
-    config['node_choose_config']['e_weight'] = np.float32(config['node_choose_config']['e_weight'])
-    config['node_choose_config']['t_weight'] = np.float32(config['node_choose_config']['t_weight'])
-
-    config['reward_config']['e_weight'] = np.float32(config['reward_config']['e_weight'])
-    config['reward_config']['t_weight'] = np.float32(config['reward_config']['t_weight'])
+    config['e_weight'] = np.float32(config['e_weight'])
+    config['t_weight'] = np.float32(config['t_weight'])
 
     config['task_split_granularity'] = np.float32(config['task_split_granularity'])
 

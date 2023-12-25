@@ -1,10 +1,12 @@
+import math
 import random
+import sys
+
 import gymnasium
 from gymnasium import spaces
-from PathCreator import PathCreator
-import sys
+
 from Node import *
-import math
+from PathCreator import PathCreator
 
 
 class OffloadingEnv(gymnasium.Env):
@@ -100,9 +102,12 @@ class OffloadingEnv(gymnasium.Env):
     def step(self, action):
         # 处理数据值
         data_size_on_local, data_size_on_remote = self.deal_data_size(action)
+
+        # 检查是否为结束状态
+        done = bool(data_size_on_remote <= 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         # 计算奖励值
         reward, energy, time = self.get_reward(self.current_node, self.target_node, data_size_on_local,
-                                               data_size_on_remote)
+                                               data_size_on_remote, done)
         # 更新车辆的位置与时间线
         time_step = math.ceil(time / self.config['vehicle_path_config']['time_slot'])
         self.time_line += time_step
@@ -124,9 +129,6 @@ class OffloadingEnv(gymnasium.Env):
 
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
-
-        # 检查是否为结束状态
-        done = bool(self.data_size <= 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
 
@@ -134,16 +136,16 @@ class OffloadingEnv(gymnasium.Env):
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
         if done:
-            print("finished")
-            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-                self.total_delay_of_task) + " energy cost:" + str(
-                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            # print("finished")
+            # print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+            #     self.total_delay_of_task) + " energy cost:" + str(
+            #     self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
         else:
-            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+            # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
             pass
         # print("\n state: ", state)
         return state, reward, done, truncated, info
@@ -169,12 +171,12 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        print("offloading_route")
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
-              end='')
+        # print("\033[93m" + "-" * 50 + "\033[0m")
+        # print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
+        # print("\033[93m" + "-" * 50 + "\033[0m")
+        # print("offloading_route")
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
+        #       end='')
         # print("initial_state: ", initial_state)
         return initial_state, info
 
@@ -193,13 +195,13 @@ class OffloadingEnv(gymnasium.Env):
             if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
                 continue
             assert current_node.id != self.nodes[i].id
-            # print(self.nodes[i].type, self.nodes[i].id, end=" ")
+            # print(f" \n{self.current_node.type}{self.current_node.id}***********", self.nodes[i].type, self.nodes[i].id,
+            #       end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
             # print(" e:", e, " t:", t, end=" ")
-            weight = self.config['node_choose_config']['e_weight'] * e + self.config['node_choose_config'][
-                't_weight'] * t
+            weight = self.config['e_weight'] * e + self.config['t_weight'] * t
             # print(" weight:", weight)
             if self.nodes[i].type == "vehicle":
                 vehicle_weight[i] = weight
@@ -244,28 +246,25 @@ class OffloadingEnv(gymnasium.Env):
         state = np.array([s_t, loss, c_nt, p_nt, e_nt, c_nt_next, p_nt_next, e_nt_next], dtype=np.float32)
         return state
 
-    def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote):
+    def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote, done):
         """
         观测到单步里面的最大时延为40 ，能耗为200
         todo:目前可能会导致频繁卸载导致总的时延与能耗很大，但是奖励却很多
         """
         assert current_node.id != target_node.id
-        e = current_node.energy_consumption_of_node_computation(
-            data_size_on_local) + current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
+        e1 = current_node.energy_consumption_of_node_computation(data_size_on_local)
+        e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
+        e = e1 + e2
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
         time = t
         energy = e
         e = e
         t = t
-        # reward = - (e * self.config['reward_config']['e_weight'] + t * self.config['reward_config']['t_weight']) # 收敛的奖励值约为0.66左右
-        reward = -1*e-1*t
-
-        # if self.max_cost<e:
-        #     self.max_cost=e
-        # if self.max_delay<t:
-        #     self.max_delay=t
-        # print("energy:", energy, " time:", time, " max_ene:", self.max_cost, " max_delay:", self.max_delay)
-        # print("energy:", energy, " time:", time," reward:",reward)
+        other = 0
+        if current_node.type == "vehicle" and target_node.type == "uav" and data_size_on_remote > 0:
+            other = -100
+        reward = - (e * self.config['e_weight'] + t * self.config['t_weight']) + other
+        # print("e1:", e1, " e2:", e2," reward:",reward)
         return reward, energy, time
 
     def deal_data_size(self, action):

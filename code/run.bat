@@ -3,7 +3,7 @@
 
 call activate ExperimentTwo
 
-for /l %%i in (1, 1, 100) do (
+for /l %%i in (1, 1, 20) do (
 
     cd /d "%~dp0"
 

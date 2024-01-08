@@ -10,7 +10,7 @@ import time
 
 if __name__ == "__main__":
     try:
-        input_integer = int(sys.argv[1])
+        input_integer = int(sys.argv[1])*5
         print(f"开始运行：{input_integer}")
     except ValueError:
         print("参数不是整数，请提供整数作为启动参数")
@@ -42,4 +42,4 @@ if __name__ == "__main__":
     # 设置log名
     training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
     # 训练模型
-    model.learn(total_timesteps=400000, callback=call_back, tb_log_name=training_time, log_interval=4)
+    model.learn(total_timesteps=1000000, callback=call_back, tb_log_name=training_time, log_interval=4)

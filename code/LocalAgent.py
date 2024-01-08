@@ -10,7 +10,6 @@ import time
 
 
 config = load_parameters()
-config['t_weight'] = np.float32()
 # 设置整体随机种子
 seed_value = config['random_seed']
 random.seed(seed_value)
@@ -36,4 +35,4 @@ call_back = CustomCallback(0)
 # 设置log名
 training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
 # 训练模型
-model.learn(total_timesteps=400000, callback=call_back, tb_log_name=training_time, log_interval=4)
+model.learn(total_timesteps=500000, callback=call_back, tb_log_name=training_time, log_interval=4)

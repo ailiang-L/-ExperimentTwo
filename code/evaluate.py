@@ -18,8 +18,8 @@ total_cost = []
 energy_cost = []
 time_cost = []
 
-for j in range(1,101):
-    config["t_weight"] = j
+for j in range(1):
+    config["t_weight"] = 50
     for i in range(1000):
         env.reset()
         # print("******************************start******************")

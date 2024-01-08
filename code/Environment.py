@@ -99,7 +99,15 @@ class OffloadingEnv(gymnasium.Env):
         self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
         self.task_interval = self.config['data_size'] / self.config['task_dimensions']
 
+        self.e_mean = 0.0
+        self.e_std = 1.0
+        self.t_mean = 0.0
+        self.t_std = 1.0
+        self.epsilon = 1e-8
+        self.global_step = 0
+
     def step(self, action):
+
         # 处理数据值
         data_size_on_local, data_size_on_remote = self.deal_data_size(action)
 
@@ -134,20 +142,25 @@ class OffloadingEnv(gymnasium.Env):
 
         info = {"reward": reward}  # 附加信息字典
         # 打印日志信息
-        em = '\n' if self.current_step % 10 == 0 else ''
+        em = '\n' if self.current_step % 5 == 0 else ''
         if done:
-            print("finished")
-            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-                self.total_delay_of_task) + " energy cost:" + str(
-                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            # print("finished  action:" + str(action) + " " + str(
+            #     self.current_node.type + " " + str(self.current_node.id)) + "(target:" + self.target_node.type + str(
+            #     self.target_node.id) + ")")
+            # print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+            #     self.total_delay_of_task) + " energy cost:" + str(
+            #     self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
         else:
-            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+            # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+            #     11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
             pass
         # print("\n state: ", state)
+        # 更新全局步数
+        self.global_step += 1
         return state, reward, done, truncated, info
 
     def reset(self, seed=1):
@@ -171,12 +184,15 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        print("offloading_route")
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
-              end='')
+        # print("\033[93m" + "-" * 50 + "\033[0m")
+        # print("\033[93m" + "|" + "episode".center(20) + "|" + str(
+        #     str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
+        # print("\033[93m" + "-" * 50 + "\033[0m")
+        # 打印卸载路线
+        # print("offloading_route")
+        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+        #     11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
+        #       end='')
         # print("initial_state: ", initial_state)
         return initial_state, info
 
@@ -196,27 +212,28 @@ class OffloadingEnv(gymnasium.Env):
                 continue
             assert current_node.id != self.nodes[i].id
             # print(f" \n{self.current_node.type}{self.current_node.id}***********", self.nodes[i].type, self.nodes[i].id,
-            #       end=" ")
+            #         end=" ")
             e = self.nodes[i].energy_consumption_of_node_computation(
                 1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
             t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
             # print(" e:", e, " t:", t, end=" ")
             weight = self.config['e_weight'] * e + self.config['t_weight'] * t
-            # print(" weight:", weight)
+            # print("part 1:"+str(self.config['e_weight'] * e)+" part 2:"+str(self.config['t_weight'] * t)+" weight:"+str(weight))
             if self.nodes[i].type == "vehicle":
                 vehicle_weight[i] = weight
             # 这里是必须的，因为无法保证没有车辆的情况
             if weight < min_value:
                 min_value = weight
                 min_index = i
-        # 如果此时当前无人机拥有车辆，那么应该优先选择车辆
-        if len(vehicle_weight) != 0:
-            min_value = sys.maxsize
-            min_index = -1
-            for i, weight in vehicle_weight.items():
-                if weight < min_value:
-                    min_value = weight
-                    min_index = i
+        # # 如果此时当前无人机拥有车辆，那么应该优先选择车辆
+        # if len(vehicle_weight) != 0:
+        #     min_value = sys.maxsize
+        #     min_index = -1
+        #     for i, weight in vehicle_weight.items():
+        #         if weight < min_value:
+        #             min_value = weight
+        #             min_index = i
+        # print("result:",self.nodes[min_index].type+str(self.nodes[min_index].id))
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
@@ -258,19 +275,33 @@ class OffloadingEnv(gymnasium.Env):
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
         time = t
         energy = e
-        e = e
-        t = t
-        other = 0
-        reward = - (e * self.config['e_weight'] + t * self.config['t_weight']) + other
-        # print("e1:", e1, " e2:", e2," reward:",reward)
+        # 将值归一化
+        e_normalized, t_normalized = self.normalize_values(e, t)
+        reward = - (e_normalized * self.config['e_weight'] + t_normalized * self.config['t_weight'])
+        # print("e:", e, " e_mean:" + str(self.e_mean) + " e_std:" + str(self.e_std) + " t_mean:" + str(
+        #     self.t_mean) + " t_std:" + str(self.t_std), " reward:", reward)
         return reward, energy, time
 
     def deal_data_size(self, action):
-        # print("action:", action, end=" ")
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = math.ceil(task_split_granularity * self.data_size)
         data_size_on_remote = self.data_size - data_size_on_local
-        # print(" data_size_on_local:", data_size_on_local, " data_size_on_remote:", data_size_on_remote, end=" ")
         return data_size_on_local, data_size_on_remote
+
+    def normalize_values(self, e, t):
+        # 更新均值和标准差
+        self.e_mean = (self.e_mean * self.global_step + e) / (self.global_step + 1)
+        self.e_std = np.sqrt(
+            ((self.e_std ** 2) * self.global_step + (e - self.e_mean) ** 2) / (self.global_step + 1))
+
+        self.t_mean = (self.t_mean * self.global_step + t) / (self.global_step + 1)
+        self.t_std = np.sqrt(
+            ((self.t_std ** 2) * self.global_step + (t - self.t_mean) ** 2) / (self.global_step + 1))
+
+        # 对 e 和 t 进行归一化
+        normalized_e = (e - self.e_mean) / (self.e_std + self.epsilon)
+        normalized_t = (t - self.t_mean) / (self.t_std + self.epsilon)
+
+        return normalized_e, normalized_t
 
 # todo reset的seed报错未解决

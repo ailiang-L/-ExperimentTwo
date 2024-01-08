@@ -136,16 +136,16 @@ class OffloadingEnv(gymnasium.Env):
         # 打印日志信息
         em = '\n' if self.current_step % 10 == 0 else ''
         if done:
-            # print("finished")
-            # print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-            #     self.total_delay_of_task) + " energy cost:" + str(
-            #     self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            print("finished")
+            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                self.total_delay_of_task) + " energy cost:" + str(
+                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
         else:
-            # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
+            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->", end=em)
             pass
         # print("\n state: ", state)
         return state, reward, done, truncated, info
@@ -171,12 +171,12 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        # print("\033[93m" + "-" * 50 + "\033[0m")
-        # print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
-        # print("\033[93m" + "-" * 50 + "\033[0m")
-        # print("offloading_route")
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
-        #       end='')
+        print("\033[93m" + "-" * 50 + "\033[0m")
+        print("\033[93m" + "|" + "episode".center(20) + "|" + str(self.episode).center(27) + "|" + "\033[0m")
+        print("\033[93m" + "-" * 50 + "\033[0m")
+        print("offloading_route")
+        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(11) + "-->",
+              end='')
         # print("initial_state: ", initial_state)
         return initial_state, info
 
@@ -261,8 +261,6 @@ class OffloadingEnv(gymnasium.Env):
         e = e
         t = t
         other = 0
-        if current_node.type == "vehicle" and target_node.type == "uav" and data_size_on_remote > 0:
-            other = -100
         reward = - (e * self.config['e_weight'] + t * self.config['t_weight']) + other
         # print("e1:", e1, " e2:", e2," reward:",reward)
         return reward, energy, time

@@ -144,19 +144,19 @@ class OffloadingEnv(gymnasium.Env):
         # 打印日志信息
         em = '\n' if self.current_step % 5 == 0 else ''
         if done:
-            # print("finished  action:" + str(action) + " " + str(
-            #     self.current_node.type + " " + str(self.current_node.id)) + "(target:" + self.target_node.type + str(
-            #     self.target_node.id) + ")")
-            # print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-            #     self.total_delay_of_task) + " energy cost:" + str(
-            #     self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            print("finished  action:" + str(action) + " " + str(
+                self.current_node.type + " " + str(self.current_node.id)) + "(target:" + self.target_node.type + str(
+                self.target_node.id) + ")")
+            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                self.total_delay_of_task) + " energy cost:" + str(
+                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
         else:
-            # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-            #     11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
+            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+                11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
             pass
         # print("\n state: ", state)
         # 更新全局步数
@@ -184,15 +184,15 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        # print("\033[93m" + "-" * 50 + "\033[0m")
-        # print("\033[93m" + "|" + "episode".center(20) + "|" + str(
-        #     str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
-        # print("\033[93m" + "-" * 50 + "\033[0m")
+        print("\033[93m" + "-" * 50 + "\033[0m")
+        print("\033[93m" + "|" + "episode".center(20) + "|" + str(
+            str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
+        print("\033[93m" + "-" * 50 + "\033[0m")
         # 打印卸载路线
-        # print("offloading_route")
-        # print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-        #     11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
-        #       end='')
+        print("offloading_route")
+        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+            11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
+              end='')
         # print("initial_state: ", initial_state)
         return initial_state, info
 
@@ -273,10 +273,11 @@ class OffloadingEnv(gymnasium.Env):
         e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
         e = e1 + e2
         t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
-        time = t
-        energy = e
+        time = t * self.config['t_weight']
+        energy = e * self.config['e_weight']
         # 将值归一化
         e_normalized, t_normalized = self.normalize_values(e, t)
+
         reward = - (e_normalized * self.config['e_weight'] + t_normalized * self.config['t_weight'])
         # print("e:", e, " e_mean:" + str(self.e_mean) + " e_std:" + str(self.e_std) + " t_mean:" + str(
         #     self.t_mean) + " t_std:" + str(self.t_std), " reward:", reward)
@@ -301,7 +302,6 @@ class OffloadingEnv(gymnasium.Env):
         # 对 e 和 t 进行归一化
         normalized_e = (e - self.e_mean) / (self.e_std + self.epsilon)
         normalized_t = (t - self.t_mean) / (self.t_std + self.epsilon)
-
         return normalized_e, normalized_t
 
 # todo reset的seed报错未解决

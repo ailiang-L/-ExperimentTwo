@@ -10,13 +10,15 @@ import time
 
 if __name__ == "__main__":
     try:
-        input_integer = int(sys.argv[1])*5
+        input_integer = int(sys.argv[1])*0.01
         print(f"开始运行：{input_integer}")
     except ValueError:
         print("参数不是整数，请提供整数作为启动参数")
     # 加载配置文件
     config = load_parameters()
     config['t_weight'] = np.float32(input_integer)
+    config["e_weight"] = 1 - config["t_weight"]
+
     # 设置整体随机种子
     seed_value = config['random_seed']
     random.seed(seed_value)

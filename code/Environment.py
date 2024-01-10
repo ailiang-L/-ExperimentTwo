@@ -38,7 +38,7 @@ class OffloadingEnv(gymnasium.Env):
             self.dim8_values
         ])
 
-        self.action_space = spaces.Discrete(len(self.config['task_split_granularity']))  # 动作空间大小为50
+        self.action_space = spaces.Discrete(len(self.config['task_split_granularity']))
         self.current_step = 0
         self.episode = 0
         self.current_node = None
@@ -105,6 +105,7 @@ class OffloadingEnv(gymnasium.Env):
         self.t_std = 1.0
         self.epsilon = 1e-8
         self.global_step = 0
+        self.is_print = False
 
     def step(self, action):
 
@@ -144,19 +145,26 @@ class OffloadingEnv(gymnasium.Env):
         # 打印日志信息
         em = '\n' if self.current_step % 5 == 0 else ''
         if done:
-            print("finished  action:" + str(action) + " " + str(
-                self.current_node.type + " " + str(self.current_node.id)) + "(target:" + self.target_node.type + str(
-                self.target_node.id) + ")")
-            print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-                self.total_delay_of_task) + " energy cost:" + str(
-                self.total_energy_cost_of_task) + " episode reward:" + str(self.total_reward_of_episode) + "\033[0m")
+            if self.is_print:
+                print("finished  action:" + str(action) + " " + str(
+                    self.current_node.type + " " + str(
+                        self.current_node.id)) + "(target:" + self.target_node.type + str(
+                    self.target_node.id) + ")")
+                print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                    self.total_delay_of_task) + " energy cost:" + str(
+                    self.total_energy_cost_of_task) + " episode reward:" + str(
+                    self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
+            info["episode_length"] = self.current_step
+            info["final_observation"] = state
+
         else:
-            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-                11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
+            if self.is_print:
+                print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+                    11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
             pass
         # print("\n state: ", state)
         # 更新全局步数
@@ -184,16 +192,17 @@ class OffloadingEnv(gymnasium.Env):
         initial_state = self.construct_state(self.current_node, self.target_node, self.data_size)  # 初始化状态
         info = {}
         # 打印日志信息
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        print("\033[93m" + "|" + "episode".center(20) + "|" + str(
-            str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
-        print("\033[93m" + "-" * 50 + "\033[0m")
-        # 打印卸载路线
-        print("offloading_route")
-        print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-            11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
-              end='')
-        # print("initial_state: ", initial_state)
+        if self.is_print:
+            print("\033[93m" + "-" * 50 + "\033[0m")
+            print("\033[93m" + "|" + "episode".center(20) + "|" + str(
+                str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
+            print("\033[93m" + "-" * 50 + "\033[0m")
+            # 打印卸载路线
+            print("offloading_route")
+            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
+                11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
+                  end='')
+            # print("initial_state: ", initial_state)
         return initial_state, info
 
     def render(self, mode='console'):
@@ -264,10 +273,6 @@ class OffloadingEnv(gymnasium.Env):
         return state
 
     def get_reward(self, current_node, target_node, data_size_on_local, data_size_on_remote, done):
-        """
-        观测到单步里面的最大时延为40 ，能耗为200
-        todo:目前可能会导致频繁卸载导致总的时延与能耗很大，但是奖励却很多
-        """
         assert current_node.id != target_node.id
         e1 = current_node.energy_consumption_of_node_computation(data_size_on_local)
         e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
@@ -276,10 +281,11 @@ class OffloadingEnv(gymnasium.Env):
         time = t * self.config['t_weight']
         energy = e * self.config['e_weight']
         # 将值归一化
-        e_normalized, t_normalized = self.normalize_values(e, t)
+        # e_normalized, t_normalized = self.normalize_values(e, t)
 
-        reward = - (e_normalized * self.config['e_weight'] + t_normalized * self.config['t_weight'])
-        # print("e:", e, " e_mean:" + str(self.e_mean) + " e_std:" + str(self.e_std) + " t_mean:" + str(
+        reward = - (e * self.config['e_weight'] + t * self.config['t_weight'])
+
+        # print("e:", e, " t:",t ," e_mean:" + str(self.e_mean) + " e_std:" + str(self.e_std) + " t_mean:" + str(
         #     self.t_mean) + " t_std:" + str(self.t_std), " reward:", reward)
         return reward, energy, time
 

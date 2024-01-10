@@ -26,9 +26,11 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
+    t_weight: int = 1
+    e_weight: int = 1
 
     # Algorithm specific arguments
-    total_timesteps: int = 1000000
+    total_timesteps: int = 800000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -86,15 +88,11 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 if __name__ == "__main__":
     config = load_parameters()
-    try:
-        input_integer = int(sys.argv[1]) * 0.01
-        print(f"开始运行：{input_integer}")
-    except ValueError:
-        print("参数不是整数，请提供整数作为启动参数")
-    config["t_weight"] = input_integer
+    args = tyro.cli(Args)
+    # 设置t的权重
+    config["t_weight"] = args.t_weight
     print(config["t_weight"])
 
-    args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
 
     training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())  # 用于设置log名称
@@ -191,8 +189,9 @@ if __name__ == "__main__":
         if done:
             obs, _ = envs.reset(seed=args.seed)  # 如果本episode结束则重置
         if global_step >= 400000 and global_step % 100000 == 0:
-            model_path = f"model/step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}"
-            torch.save(q_network.state_dict(), model_path)
+            model_path = "../model/"
+            os.makedirs(model_path, exist_ok=True)
+            torch.save(q_network.state_dict(), model_path+f"step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}")
 
     envs.close()
     writer.close()

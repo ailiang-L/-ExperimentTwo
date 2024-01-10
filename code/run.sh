@@ -1,8 +1,8 @@
 #!/bin/bash
 
 source activate ExperimentTwo
-for ((i=1; i<=20; i++)); do
+for ((i=1; i<=100; i++)); do
     cd "$(dirname "$0")"
-    python Agent.py $((i+1))
+    python CleanRL.py --t_weight $((i))
     sleep 5s
 done

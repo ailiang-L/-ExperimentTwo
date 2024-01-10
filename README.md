@@ -1,6 +1,7 @@
 # -ExperimentTwo
 ## max_loss 的讨论
 ### 当车车的最大通讯范围为200时的loss值
+set fileformat=unix
 L_vv = L0vv + 10 * eta3* np.log10(d_vv /d0) +  X_eta4+zeta * Lcvv，其中  
 X_eta4 : np.random.normal(0, 1.7)  
 eta3: 1.68   

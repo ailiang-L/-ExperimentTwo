@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 import time
 from dataclasses import dataclass
 from Environment import OffloadingEnv
@@ -84,6 +85,15 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 
 if __name__ == "__main__":
+    config = load_parameters()
+    try:
+        input_integer = int(sys.argv[1]) * 0.01
+        print(f"开始运行：{input_integer}")
+    except ValueError:
+        print("参数不是整数，请提供整数作为启动参数")
+    config["t_weight"] = input_integer
+    print(config["t_weight"])
+
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
 
@@ -97,16 +107,15 @@ if __name__ == "__main__":
     )
 
     # TRY NOT TO MODIFY: seeding
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    random.seed(config['random_seed'])
+    np.random.seed(config['random_seed'])
+    torch.manual_seed(config['random_seed'])
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    config = load_parameters()
-    envs = make_env(True, config['seed'])
+    envs = make_env(False, config['random_seed'])
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)

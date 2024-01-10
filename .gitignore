@@ -1,3 +1,5 @@
 /log/*
 .idea/*
 /model/*
+/runs/*
+/runs/*

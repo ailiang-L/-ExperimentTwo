@@ -10,7 +10,7 @@ from PathCreator import PathCreator
 
 
 class OffloadingEnv(gymnasium.Env):
-    def __init__(self, config):
+    def __init__(self, config, is_print=False):
         super(OffloadingEnv, self).__init__()
         # 加载配置文件
         self.config = config
@@ -39,7 +39,7 @@ class OffloadingEnv(gymnasium.Env):
         ])
 
         self.action_space = spaces.Discrete(len(self.config['task_split_granularity']))
-        self.current_step = 0
+        self.current_step = 1
         self.episode = 0
         self.current_node = None
         self.target_node = None
@@ -104,8 +104,8 @@ class OffloadingEnv(gymnasium.Env):
         self.t_mean = 0.0
         self.t_std = 1.0
         self.epsilon = 1e-8
-        self.global_step = 0
-        self.is_print = False
+        self.global_step = 1
+        self.is_print = is_print
 
     def step(self, action):
 
@@ -138,37 +138,33 @@ class OffloadingEnv(gymnasium.Env):
 
         # 构造下一个状态
         state = self.construct_state(self.current_node, self.target_node, self.data_size)
-        self.current_step += 1
         truncated = False  # 是否因为最大步数限制被提前终止
-
-        info = {"reward": reward}  # 附加信息字典
+        info = {}  # 附加信息字典
         # 打印日志信息
-        em = '\n' if self.current_step % 5 == 0 else ''
+        em = '\n' if self.current_step % 10 == 0 or done else ''
         if done:
-            if self.is_print:
-                print("finished  action:" + str(action) + " " + str(
-                    self.current_node.type + " " + str(
-                        self.current_node.id)) + "(target:" + self.target_node.type + str(
-                    self.target_node.id) + ")")
-                print("\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
-                    self.total_delay_of_task) + " energy cost:" + str(
-                    self.total_energy_cost_of_task) + " episode reward:" + str(
-                    self.total_reward_of_episode) + "\033[0m")
             info["total_delay"] = self.total_delay_of_task
             info["energy_cost"] = self.total_energy_cost_of_task
             info["done"] = done
             info["episode_reward"] = self.total_reward_of_episode
             info["episode_length"] = self.current_step
-            info["final_observation"] = state
-
-        else:
             if self.is_print:
-                print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-                    11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->", end=em)
-            pass
-        # print("\n state: ", state)
-        # 更新全局步数
-        self.global_step += 1
+                # print("finished  action:" + str(action) + " " + str(
+                #     self.current_node.type + " " + str(
+                #         self.current_node.id)) + "(target:" + self.target_node.type + str(
+                #     self.target_node.id) + ")")
+
+                print(em+"\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                    self.total_delay_of_task) + " energy cost:" + str(
+                    self.total_energy_cost_of_task) + " episode reward:" + str(
+                    self.total_reward_of_episode) + "\033[0m")
+        else:
+            # 更新step
+            self.current_step += 1
+            self.global_step += 1
+            if self.is_print:
+                print("-->"+str(self.current_node.type + " " + str(self.current_node.id)).center(11), end=em)
+
         return state, reward, done, truncated, info
 
     def reset(self, seed=1):
@@ -198,11 +194,7 @@ class OffloadingEnv(gymnasium.Env):
                 str(self.episode) + "(" + str(self.global_step) + ")").center(27) + "|" + "\033[0m")
             print("\033[93m" + "-" * 50 + "\033[0m")
             # 打印卸载路线
-            print("offloading_route")
-            print(str(self.current_node.type + " " + str(self.current_node.id)).rjust(
-                11) + "(target:" + self.target_node.type + str(self.target_node.id) + ")" + "-->",
-                  end='')
-            # print("initial_state: ", initial_state)
+            print(str(self.current_node.type + " " + str(self.current_node.id)).center(11), end='')
         return initial_state, info
 
     def render(self, mode='console'):

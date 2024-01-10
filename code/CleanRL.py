@@ -27,8 +27,6 @@ class Args:
     """if toggled, cuda will be enabled by default"""
 
     # Algorithm specific arguments
-    env_id: str = "test"
-    """the id of the environment"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
@@ -55,6 +53,12 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 10
     """the frequency of training"""
+
+
+def make_env(is_print, seed):
+    env = OffloadingEnv(config, is_print)
+    env.action_space.seed(seed)
+    return env
 
 
 # ALGO LOGIC: initialize agent here:
@@ -102,7 +106,7 @@ if __name__ == "__main__":
 
     # env setup
     config = load_parameters()
-    envs = OffloadingEnv(config)
+    envs = make_env(True, config['seed'])
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
@@ -144,9 +148,7 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        # for idx, trunc in enumerate(truncations):
-        #     if trunc:
-        #         real_next_obs[idx] = infos["final_observation"][idx]
+
         rb.add(obs, real_next_obs, actions, rewards, done, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -179,6 +181,9 @@ if __name__ == "__main__":
                     )
         if done:
             obs, _ = envs.reset(seed=args.seed)  # 如果本episode结束则重置
+        if global_step >= 400000 and global_step % 100000 == 0:
+            model_path = f"model/step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}"
+            torch.save(q_network.state_dict(), model_path)
 
     envs.close()
     writer.close()

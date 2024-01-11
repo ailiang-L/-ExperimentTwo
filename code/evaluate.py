@@ -154,8 +154,10 @@ class Tools:
     def draw_training_figs(self, data_set, sample_frequency, title, x_label, y_label, save_path):
         plt.figure(figsize=(18, 16))
         # Convert GPU tensors to NumPy arrays by moving them to CPU
-        set_cpu = [loss.cpu().detach().numpy() for loss in data_set]
-        set_cpu = set_cpu[::sample_frequency]
+        if isinstance(data_set[0], torch.Tensor):
+            set_cpu = [element.cpu().detach().numpy() for element in data_set]
+        else:
+            set_cpu = data_set[::sample_frequency]
         x = [i * sample_frequency for i in range(len(set_cpu))]
         plt.plot(x, set_cpu, label=title)
 

@@ -281,6 +281,20 @@ class OffloadingEnv(gymnasium.Env):
         #     self.t_mean) + " t_std:" + str(self.t_std), " reward:", reward)
         return reward, energy, time
 
+    def get_reward_normalized(self, current_node, target_node, data_size_on_local, data_size_on_remote, done):
+        assert current_node.id != target_node.id
+        e1 = current_node.energy_consumption_of_node_computation(data_size_on_local)
+        e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
+        e = e1 + e2
+        t = current_node.offloading_time(data_size_on_local, data_size_on_remote, target_node)
+        time = t * self.config['t_weight']
+        energy = e * self.config['e_weight']
+        # 将值归一化
+        e_normalized, t_normalized = self.normalize_values(e, t)
+
+        reward = - (e_normalized * self.config['e_weight'] + t_normalized * self.config['t_weight'])
+        return reward, energy, time
+
     def deal_data_size(self, action):
         task_split_granularity = self.config['task_split_granularity'][action]
         data_size_on_local = math.ceil(task_split_granularity * self.data_size)

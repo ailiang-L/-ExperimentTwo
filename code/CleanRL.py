@@ -1,6 +1,6 @@
 import os
 import random
-from evaluate import Evaluate
+from evaluate import Evaluate, Tools
 import matplotlib.pyplot as plt
 import time
 from dataclasses import dataclass
@@ -214,70 +214,17 @@ if __name__ == "__main__":
             evaluator = Evaluate()
             evaluator.do_evaluate(
                 model_path + f"step-{global_step + 1}-tweight-{config['t_weight']}-eweight-{config['e_weight']}",
-                log_path)
+                log_path, QNetwork)
 
     envs.close()
     writer.close()
 
-    # 绘制loss曲线
-    plt.figure(figsize=(8, 6))
-    x = [i * 100 for i in range(len(loss_set))]
-    plt.plot(x, loss_set, label='Loss')
-    plt.xlabel('step')
-    plt.ylabel('loss')
-    plt.title('loss of training')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "loss.png")
-
-    # 绘制total_cost曲线
-    plt.figure(figsize=(8, 6))
-    plt.plot(total_set, label='Total_cost')
-    plt.xlabel('step')
-    plt.ylabel('cost')
-    plt.title('total cost')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "total_cost.png")
-
-    # 绘制time_cost曲线
-    plt.figure(figsize=(8, 6))
-    plt.plot(time_set, label='Time_cost')
-    plt.xlabel('step')
-    plt.ylabel('time')
-    plt.title('time cost')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "time_cost.png")
-
-    # 绘制energy_cost曲线
-    plt.figure(figsize=(8, 6))
-    plt.plot(energy_set, label='Energy_cost')
-    plt.xlabel('step')
-    plt.ylabel('energy')
-    plt.title('energy cost')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "energy_cost.png")
-
-    # 绘制reward曲线
-    plt.figure(figsize=(8, 6))
-    plt.plot(reward_set, label='Reward')
-    plt.xlabel('step')
-    plt.ylabel('reward')
-    plt.title('reward cost')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "reward.png")
-
-    # 绘制episode_length曲线
-    plt.figure(figsize=(8, 6))
-    plt.plot(length_set, label='episode_length')
-    plt.xlabel('step')
-    plt.ylabel('episode_length')
-    plt.title('episode_length')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(log_path + "episode_length.png")
-
-    plt.close()  # 关闭图形，防止显示在屏幕上
+    # 绘制训练曲线
+    N = 100  # 数据采样频率
+    tools = Tools()
+    tools.draw_training_figs(loss_set, 1, "loss", "step", "loss", log_path)
+    tools.draw_training_figs(total_set, N, "total_cost", "step", "total_cost", log_path)
+    tools.draw_training_figs(time_set, N, "time_cost", "step", "time_cost", log_path)
+    tools.draw_training_figs(energy_set, N, "energy_cost", "step", "energy_cost", log_path)
+    tools.draw_training_figs(reward_set, N, "reward", "step", "reward", log_path)
+    tools.draw_training_figs(length_set, N, "episode_length", "step", "episode_length", log_path)

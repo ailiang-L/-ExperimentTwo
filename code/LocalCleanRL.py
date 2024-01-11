@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     # env setup
 
-    envs = make_env(True, config['random_seed'])
+    envs = make_env(False, config['random_seed'])
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                     )
         if done:
             obs, _ = envs.reset(seed=args.seed)  # 如果本episode结束则重置
-        if global_step >= 400000 and global_step % 100000 == 0:
+        if (global_step+1) >= 400000 and (global_step+1) % 100000 == 0:
             model_path = "../model/"
             os.makedirs(model_path, exist_ok=True)
             torch.save(q_network.state_dict(),

@@ -1,6 +1,7 @@
 import os
 import random
-import sys
+from evaluate import Evaluate
+import matplotlib.pyplot as plt
 import time
 from dataclasses import dataclass
 from Environment import OffloadingEnv
@@ -30,7 +31,7 @@ class Args:
     e_weight: int = 1
 
     # Algorithm specific arguments
-    total_timesteps: int = 800000
+    total_timesteps: int = 1000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -87,11 +88,23 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 
 if __name__ == "__main__":
+    loss_set = []
+    reward_set = []
+    time_set = []
+    energy_set = []
+    total_set = []
+    length_set = []
+
     config = load_parameters()
     args = tyro.cli(Args)
     # 设置t的权重
     config["t_weight"] = args.t_weight
-    print(config["t_weight"])
+    config["e_weight"] = args.e_weight
+    log_path = f"../log/e_weight_{args.e_weight}_t_weight_{args.t_weight}"
+    os.makedirs(log_path, exist_ok=True)
+    model_path = "../model/"
+    os.makedirs(model_path, exist_ok=True)
+    print("t_weight:", config["t_weight"], " e_weight:", config["e_weight"])
 
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
 
@@ -152,6 +165,11 @@ if __name__ == "__main__":
             writer.add_scalar("costs/time_cost", infos["total_delay"], global_step)
             writer.add_scalar("costs/energy_cost", infos["energy_cost"], global_step)
             writer.add_scalar("costs/total_cost", infos["energy_cost"] + infos["total_delay"], global_step)
+            reward_set.append(infos["episode_reward"])
+            time_set.append(infos["total_delay"])
+            energy_set.append(infos["energy_cost"])
+            total_set.append(infos["energy_cost"] + infos["total_delay"])
+            length_set.append(infos["episode_length"])
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -174,6 +192,7 @@ if __name__ == "__main__":
                 if global_step % 100 == 0:
                     writer.add_scalar("training/loss", loss, global_step)
                     writer.add_scalar("training/q_values", old_val.mean().item(), global_step)
+                    loss_set.append(loss)
 
                 # optimize the model
                 optimizer.zero_grad()
@@ -188,10 +207,77 @@ if __name__ == "__main__":
                     )
         if done:
             obs, _ = envs.reset(seed=args.seed)  # 如果本episode结束则重置
-        if global_step >= 400000 and global_step % 100000 == 0:
-            model_path = "../model/"
-            os.makedirs(model_path, exist_ok=True)
-            torch.save(q_network.state_dict(), model_path+f"step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}")
+        if (global_step + 1) >= 400000 and (global_step + 1) % 100000 == 0:
+            torch.save(q_network.state_dict(),
+                       model_path + f"step-{global_step + 1}-tweight-{config['t_weight']}-eweight-{config['e_weight']}")
+            # 开始验证并记录验证的数据
+            evaluator = Evaluate()
+            evaluator.do_evaluate(
+                model_path + f"step-{global_step + 1}-tweight-{config['t_weight']}-eweight-{config['e_weight']}",
+                log_path)
 
     envs.close()
     writer.close()
+
+    # 绘制loss曲线
+    plt.figure(figsize=(8, 6))
+    x = [i * 100 for i in range(len(loss_set))]
+    plt.plot(x, loss_set, label='Loss')
+    plt.xlabel('step')
+    plt.ylabel('loss')
+    plt.title('loss of training')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "loss.png")
+
+    # 绘制total_cost曲线
+    plt.figure(figsize=(8, 6))
+    plt.plot(total_set, label='Total_cost')
+    plt.xlabel('step')
+    plt.ylabel('cost')
+    plt.title('total cost')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "total_cost.png")
+
+    # 绘制time_cost曲线
+    plt.figure(figsize=(8, 6))
+    plt.plot(time_set, label='Time_cost')
+    plt.xlabel('step')
+    plt.ylabel('time')
+    plt.title('time cost')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "time_cost.png")
+
+    # 绘制energy_cost曲线
+    plt.figure(figsize=(8, 6))
+    plt.plot(energy_set, label='Energy_cost')
+    plt.xlabel('step')
+    plt.ylabel('energy')
+    plt.title('energy cost')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "energy_cost.png")
+
+    # 绘制reward曲线
+    plt.figure(figsize=(8, 6))
+    plt.plot(reward_set, label='Reward')
+    plt.xlabel('step')
+    plt.ylabel('reward')
+    plt.title('reward cost')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "reward.png")
+
+    # 绘制episode_length曲线
+    plt.figure(figsize=(8, 6))
+    plt.plot(length_set, label='episode_length')
+    plt.xlabel('step')
+    plt.ylabel('episode_length')
+    plt.title('episode_length')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(log_path + "episode_length.png")
+
+    plt.close()  # 关闭图形，防止显示在屏幕上

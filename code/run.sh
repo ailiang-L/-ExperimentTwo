@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source activate ExperimentTwo
-for ((i=1; i<=100; i++)); do
+for ((i=1; i<=10; i++)); do
     cd "$(dirname "$0")"
     python CleanRL.py --t_weight $((i))
     sleep 5s

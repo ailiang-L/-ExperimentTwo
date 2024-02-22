@@ -16,7 +16,7 @@ import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
-
+# TODO　当奖励归一化以后，但是目标选取策略似乎还没有改变
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
@@ -98,9 +98,9 @@ if __name__ == "__main__":
     config = load_parameters()
     args = tyro.cli(Args)
     # 设置t的权重
-    config["t_weight"] = args.t_weight
-    config["e_weight"] = args.e_weight
-    log_path = f"../log/e_weight_{args.e_weight}_t_weight_{args.t_weight}"
+    config["t_weight"] = args.t_weight*0.1
+    config["e_weight"] = 1-config["t_weight"]
+    log_path = f"../log/e_weight_{config['e_weight']}_t_weight_{config['t_weight']}"
     os.makedirs(log_path, exist_ok=True)
     model_path = "../model/"
     os.makedirs(model_path, exist_ok=True)

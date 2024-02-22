@@ -48,8 +48,8 @@ vehicle_config:
 
 
 
-e_weight: 1
-t_weight: 15
+e_weight: 0.1
+t_weight: 0.9
 
 data_size: 1e8 #bits
 task_dimensions: 50
@@ -58,5 +58,5 @@ task_split_granularity: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 random_seed: 1
 
 max_loss: 120
-min_loss: 80
+min_loss: 78
 

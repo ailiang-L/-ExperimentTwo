@@ -61,8 +61,7 @@ class OffloadingEnv(gymnasium.Env):
         self.total_delay_of_task = 0
         self.total_energy_cost_of_task = 0
         self.total_reward_of_episode = 0
-        self.max_delay = 1
-        self.max_cost = 1
+
         # 节点定义：4个无人机，20个车辆
         self.nodes = []
         # 定义无人机
@@ -99,13 +98,13 @@ class OffloadingEnv(gymnasium.Env):
         self.min_e_n = min(self.min_e_n, self.config['uav_config']['E_n'])
         self.task_interval = self.config['data_size'] / self.config['task_dimensions']
 
-        self.e_mean = 0.0
-        self.e_std = 1.0
-        self.t_mean = 0.0
-        self.t_std = 1.0
-        self.epsilon = 1e-8
         self.global_step = 1
         self.is_print = is_print
+        # 奖励归一化中的最值
+        self.max_delay = 27
+        self.max_cost = 137
+        self.min_delay = 1.6e-08
+        self.min_cost = 6e-08
 
     def step(self, action):
 
@@ -115,8 +114,8 @@ class OffloadingEnv(gymnasium.Env):
         # 检查是否为结束状态
         done = bool(data_size_on_remote <= 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         # 计算奖励值
-        reward, energy, time = self.get_reward(self.current_node, self.target_node, data_size_on_local,
-                                               data_size_on_remote, done)
+        reward, energy, time = self.get_reward_normalized(self.current_node, self.target_node, data_size_on_local,
+                                                          data_size_on_remote, done)
         # 更新车辆的位置与时间线
         time_step = math.ceil(time / self.config['vehicle_path_config']['time_slot'])
         self.time_line += time_step
@@ -154,7 +153,7 @@ class OffloadingEnv(gymnasium.Env):
                 #         self.current_node.id)) + "(target:" + self.target_node.type + str(
                 #     self.target_node.id) + ")")
 
-                print(em+"\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
+                print(em + "\033[92m timeline:" + str(self.time_line) + " total delay: " + str(
                     self.total_delay_of_task) + " energy cost:" + str(
                     self.total_energy_cost_of_task) + " episode reward:" + str(
                     self.total_reward_of_episode) + "\033[0m")
@@ -163,7 +162,7 @@ class OffloadingEnv(gymnasium.Env):
             self.current_step += 1
             self.global_step += 1
             if self.is_print:
-                print("-->"+str(self.current_node.type + " " + str(self.current_node.id)).center(11), end=em)
+                print("-->" + str(self.current_node.type + " " + str(self.current_node.id)).center(11), end=em)
 
         return state, reward, done, truncated, info
 
@@ -282,6 +281,10 @@ class OffloadingEnv(gymnasium.Env):
         return reward, energy, time
 
     def get_reward_normalized(self, current_node, target_node, data_size_on_local, data_size_on_remote, done):
+        '''
+        使用了五百万次实验来寻找cost与delay的最值分别为：min_t:1.7777777777777777e-08,max_t:26.666666666666668
+        max_cost=136.00000556834857,min_cost= 6.593697518922725e-08
+        '''
         assert current_node.id != target_node.id
         e1 = current_node.energy_consumption_of_node_computation(data_size_on_local)
         e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)
@@ -302,18 +305,8 @@ class OffloadingEnv(gymnasium.Env):
         return data_size_on_local, data_size_on_remote
 
     def normalize_values(self, e, t):
-        # 更新均值和标准差
-        self.e_mean = (self.e_mean * self.global_step + e) / (self.global_step + 1)
-        self.e_std = np.sqrt(
-            ((self.e_std ** 2) * self.global_step + (e - self.e_mean) ** 2) / (self.global_step + 1))
-
-        self.t_mean = (self.t_mean * self.global_step + t) / (self.global_step + 1)
-        self.t_std = np.sqrt(
-            ((self.t_std ** 2) * self.global_step + (t - self.t_mean) ** 2) / (self.global_step + 1))
-
-        # 对 e 和 t 进行归一化
-        normalized_e = (e - self.e_mean) / (self.e_std + self.epsilon)
-        normalized_t = (t - self.t_mean) / (self.t_std + self.epsilon)
+        normalized_e = (e - self.min_cost) / (self.max_cost - self.min_cost)
+        normalized_t = (t - self.min_delay) / (self.max_delay - self.min_delay)
         return normalized_e, normalized_t
 
 # todo reset的seed报错未解决

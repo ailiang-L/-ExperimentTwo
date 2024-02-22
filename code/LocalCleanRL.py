@@ -1,6 +1,5 @@
 import os
 import random
-import sys
 import time
 from dataclasses import dataclass
 from Environment import OffloadingEnv
@@ -26,6 +25,10 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
+
+    t_weight: int = 1
+    e_weight: int = 1
+    is_comparison_experiment: bool = False
 
     # Algorithm specific arguments
     total_timesteps: int = 1000000
@@ -88,6 +91,8 @@ if __name__ == "__main__":
     config = load_parameters()
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
+
+    config["is_comparison_experiment"] = args.is_comparison_experiment
 
     training_time = time.strftime('%Y-%m-%d-%H-%M', time.localtime())  # 用于设置log名称
     run_name = f"{training_time}"

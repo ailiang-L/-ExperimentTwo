@@ -48,8 +48,8 @@ vehicle_config:
 
 
 
-e_weight: 0.1
-t_weight: 0.9
+e_weight: 1
+t_weight: 15
 
 data_size: 1e8 #bits
 task_dimensions: 50

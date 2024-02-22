@@ -1,4 +1,3 @@
-import math
 import random
 import sys
 
@@ -105,8 +104,10 @@ class OffloadingEnv(gymnasium.Env):
         self.max_cost = 137
         self.min_delay = 1.6e-08
         self.min_cost = 6e-08
+        # 是否为对比实验
+        self.is_comparison_experiment = self.config["is_comparison_experiment"]
 
-    def step(self, action):
+    def step(self, action, is_comparison_experiment=False):
 
         # 处理数据值
         data_size_on_local, data_size_on_remote = self.deal_data_size(action)
@@ -206,34 +207,35 @@ class OffloadingEnv(gymnasium.Env):
         min_value = sys.maxsize
         min_index = -1
         # print("********************************one choose*****************************")
-        vehicle_weight = {}
-        for i in range(len(self.nodes)):
-            if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
-                continue
-            assert current_node.id != self.nodes[i].id
-            # print(f" \n{self.current_node.type}{self.current_node.id}***********", self.nodes[i].type, self.nodes[i].id,
-            #         end=" ")
-            e = self.nodes[i].energy_consumption_of_node_computation(
-                1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
-            t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
-            # print(" e:", e, " t:", t, end=" ")
-            weight = self.config['e_weight'] * e + self.config['t_weight'] * t
-            # print("part 1:"+str(self.config['e_weight'] * e)+" part 2:"+str(self.config['t_weight'] * t)+" weight:"+str(weight))
-            if self.nodes[i].type == "vehicle":
-                vehicle_weight[i] = weight
-            # 这里是必须的，因为无法保证没有车辆的情况
-            if weight < min_value:
-                min_value = weight
-                min_index = i
-        # # 如果此时当前无人机拥有车辆，那么应该优先选择车辆
-        # if len(vehicle_weight) != 0:
-        #     min_value = sys.maxsize
-        #     min_index = -1
-        #     for i, weight in vehicle_weight.items():
-        #         if weight < min_value:
-        #             min_value = weight
-        #             min_index = i
-        # print("result:",self.nodes[min_index].type+str(self.nodes[min_index].id))
+        if not self.is_comparison_experiment:
+            for i in range(len(self.nodes)):
+                if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
+                    continue
+                assert current_node.id != self.nodes[i].id
+                # print(f" \n{self.current_node.type}{self.current_node.id}***********",
+                # self.nodes[i].type, self.nodes[i].id, end=" ")
+                e = self.nodes[i].energy_consumption_of_node_computation(
+                    1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
+                t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
+                # print(" e:", e, " t:", t, end=" ")
+                weight = self.config['e_weight'] * e + self.config['t_weight'] * t
+                # 这里是必须的，因为无法保证没有车辆的情况
+                if weight < min_value:
+                    min_value = weight
+                    min_index = i
+        # 对比试验选择节点时，只考虑无人机节点，而不考虑车辆节点
+        else:
+            for i in range(len(self.config['uav_config']['pos'])):
+                if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:
+                    continue
+                assert current_node.id != self.nodes[i].id
+                e = self.nodes[i].energy_consumption_of_node_computation(
+                    1) + current_node.energy_consumption_of_node_transmission(1, self.nodes[i])
+                t = current_node.target_node_offloading_time(1, 1, self.nodes[i])
+                weight = self.config['e_weight'] * e + self.config['t_weight'] * t
+                if weight < min_value:
+                    min_value = weight
+                    min_index = i
         assert self.nodes[min_index].id != current_node.id
         return self.nodes[min_index]
 
@@ -281,10 +283,10 @@ class OffloadingEnv(gymnasium.Env):
         return reward, energy, time
 
     def get_reward_normalized(self, current_node, target_node, data_size_on_local, data_size_on_remote, done):
-        '''
+        """
         使用了五百万次实验来寻找cost与delay的最值分别为：min_t:1.7777777777777777e-08,max_t:26.666666666666668
         max_cost=136.00000556834857,min_cost= 6.593697518922725e-08
-        '''
+        """
         assert current_node.id != target_node.id
         e1 = current_node.energy_consumption_of_node_computation(data_size_on_local)
         e2 = current_node.energy_consumption_of_node_transmission(data_size_on_remote, target_node)

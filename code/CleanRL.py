@@ -16,6 +16,7 @@ import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
+
 # TODO　当奖励归一化以后，但是目标选取策略似乎还没有改变
 @dataclass
 class Args:
@@ -27,8 +28,10 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
+
     t_weight: int = 1
     e_weight: int = 1
+    is_comparison_experiment: bool = False
 
     # Algorithm specific arguments
     total_timesteps: int = 1000000
@@ -98,8 +101,9 @@ if __name__ == "__main__":
     config = load_parameters()
     args = tyro.cli(Args)
     # 设置t的权重
-    config["t_weight"] = args.t_weight*0.1
-    config["e_weight"] = 1-config["t_weight"]
+    config["t_weight"] = args.t_weight * 0.1
+    config["e_weight"] = 1 - config["t_weight"]
+    config["is_comparison_experiment"] = args.is_comparison_experiment
     log_path = f"../log/e_weight_{config['e_weight']}_t_weight_{config['t_weight']}"
     os.makedirs(log_path, exist_ok=True)
     model_path = "../model/"

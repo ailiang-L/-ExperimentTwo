@@ -101,8 +101,8 @@ if __name__ == "__main__":
     config = load_parameters()
     args = tyro.cli(Args)
     # 设置t的权重
-    config["t_weight"] = args.t_weight * 0.1
-    config["e_weight"] = 1 - config["t_weight"]
+    config["t_weight"] = args.t_weight * 0.5+5
+    config["e_weight"] = 1
     config["is_comparison_experiment"] = args.is_comparison_experiment
     log_path = f"../log/e_weight_{config['e_weight']}_t_weight_{config['t_weight']}"
     os.makedirs(log_path, exist_ok=True)

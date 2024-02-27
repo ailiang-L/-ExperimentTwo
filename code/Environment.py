@@ -115,7 +115,7 @@ class OffloadingEnv(gymnasium.Env):
         # 检查是否为结束状态
         done = bool(data_size_on_remote <= 0)  # 类型为<class 'numpy.bool_'>，所以需要转一下
         # 计算奖励值
-        reward, energy, time = self.get_reward_normalized(self.current_node, self.target_node, data_size_on_local,
+        reward, energy, time = self.get_reward(self.current_node, self.target_node, data_size_on_local,
                                                           data_size_on_remote, done)
         # 更新车辆的位置与时间线
         time_step = math.ceil(time / self.config['vehicle_path_config']['time_slot'])
@@ -223,7 +223,7 @@ class OffloadingEnv(gymnasium.Env):
                 if weight < min_value:
                     min_value = weight
                     min_index = i
-        # 对比试验选择节点时，只考虑无人机节点，而不考虑车辆节点
+        # 对照实验的节点选择
         else:
             for i in range(len(self.config['uav_config']['pos'])):
                 if current_node.id == self.nodes[i].id or current_node.node_is_in_range(self.nodes[i]) is False:

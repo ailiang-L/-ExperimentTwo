@@ -188,11 +188,11 @@ if __name__ == "__main__":
                     )
         if done:
             obs, _ = envs.reset(seed=args.seed)  # 如果本episode结束则重置
-        if (global_step+1) >= 400000 and (global_step+1) % 100000 == 0:
+        if (global_step + 1) >= 400000 and (global_step + 1) % 100000 == 0:
             model_path = "../model/"
             os.makedirs(model_path, exist_ok=True)
             torch.save(q_network.state_dict(),
-                       model_path + f"step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}")
+                       model_path + f"step-{global_step}-tweight-{config['t_weight']}-eweight-{config['e_weight']}-comparison-{config['is_comparison_experiment']}")
 
     envs.close()
     writer.close()

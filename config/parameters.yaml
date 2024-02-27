@@ -27,7 +27,8 @@ uav_config:
     - [250, 100, 250]
 
   bandwidth: 1e6        # Hz or 1MHz
-  E_n: 7e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut
+#  E_n: 7e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut
+  E_n: 13e-8           # J/cycle--the CPU energy consumption to implement one cycle at node ut
   P_n: 1              # w--the transmit power of node ut
   type: "uav"
   w: 8               # cycle/bit--the number of CPU cycles required to compute one bit (from gpt suggest)
@@ -49,7 +50,7 @@ vehicle_config:
 
 
 e_weight: 1
-t_weight: 15
+t_weight: 10
 
 data_size: 1e8 #bits
 task_dimensions: 50
